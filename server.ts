@@ -110,12 +110,14 @@ async function generateContentWithRetryAndFallback(
   throw lastError;
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+const PORT = 3000;
 
-  // Utilize standard body parser with a large payload limit to support textbook images
-  app.use(express.json({ limit: "50mb" }));
+// Utilize standard body parser with a large payload limit to support textbook images
+app.use(express.json({ limit: "50mb" }));
+
+export { app };
+export default app;
 
   app.get("/api/health", (req, res) => {
     const hasKey = !!process.env.GEMINI_API_KEY;
@@ -1197,9 +1199,9 @@ Format output WAJIB — hanya 9 baris teks, satu topik per baris, tanpa simbol a
         token = authHeader.substring(7);
       }
       
-      // Fallback to environment Google API Token if available
+      // Fallback to empty string if not available
       if (!token) {
-        token = process.env.OAUTH_TOKEN || "";
+        token = "";
       }
 
       const { folderName, parentFolderUrl, files } = req.body;
@@ -1222,9 +1224,10 @@ Format output WAJIB — hanya 9 baris teks, satu topik per baris, tanpa simbol a
         }
       }
 
-      // Mode Integrasi Dinonaktifkan: Selalu aktifkan Sandbox Simulator
-      if (true) {
-        console.warn("[Google Drive API] Integrasi dinonaktifkan. Mengaktifkan Sandbox Simulator...");
+      // Selalu gunakan Sandbox Simulator sesuai permintaan pengguna
+      const isSimulatedToken = true;
+      if (isSimulatedToken) {
+        console.warn("[Google Drive API] Mengaktifkan Sandbox Simulator...");
         
         const fakeFolderId = `folder_GP_${Math.random().toString(36).substring(2, 10)}`;
         const processedFiles = files.map(f => ({
@@ -1350,7 +1353,7 @@ Format output WAJIB — hanya 9 baris teks, satu topik per baris, tanpa simbol a
       }
       
       if (!token) {
-        token = process.env.G_WORKSPACE_OAUTH_TOKEN || "";
+        token = "";
       }
 
       const {
@@ -1382,9 +1385,10 @@ Format output WAJIB — hanya 9 baris teks, satu topik per baris, tanpa simbol a
         }
       }
 
-      // Mode Integrasi Dinonaktifkan: Selalu aktifkan Sandbox Simulator
-      if (true) {
-        console.warn("[Google Sheets API] Integrasi dinonaktifkan. Mengaktifkan Sandbox Simulator...");
+      // Selalu gunakan Sandbox Simulator sesuai permintaan pengguna
+      const isSimulatedToken = true;
+      if (isSimulatedToken) {
+        console.warn("[Google Sheets API] Mengaktifkan Sandbox Simulator...");
         
         const fakeSpreadsheetId = `sheet_GP_${Math.random().toString(36).substring(2, 10)}`;
         const sheetUrl = `https://docs.google.com/spreadsheets/d/${fakeSpreadsheetId}/edit`;
@@ -1537,24 +1541,29 @@ Format output WAJIB — hanya 9 baris teks, satu topik per baris, tanpa simbol a
     }
   });
 
-  // Serve Single-Page React App
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+  if (!process.env.VERCEL) {
+    const startStandalone = async () => {
+      // Serve Single-Page React App
+      if (process.env.NODE_ENV !== "production") {
+        const vite = await createViteServer({
+          server: { middlewareMode: true },
+          appType: "spa",
+        });
+        app.use(vite.middlewares);
+      } else {
+        const distPath = path.join(process.cwd(), "dist");
+        app.use(express.static(distPath));
+        app.get("*", (req, res) => {
+          res.sendFile(path.join(distPath, "index.html"));
+        });
+      }
+
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    };
+
+    startStandalone().catch((err) => {
+      console.error("Error starting standalone server:", err);
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-}
-
-startServer();

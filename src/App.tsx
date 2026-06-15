@@ -1095,7 +1095,7 @@ export default function App() {
       let fetchedEvents: any[] = [];
       let isSimulated = true;
 
-      if (true) {
+      if (isSimulated) {
         // Run Simulated Flow Directly
       } else {
         // Real API Call
