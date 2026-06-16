@@ -1091,32 +1091,9 @@ export default function App() {
     playSfx("click");
 
     try {
-      const token = "MY_OAUTH_TOKEN";
+      // Simulated calendar flow — no external API call
       let fetchedEvents: any[] = [];
-      let isSimulated = true;
-
-      if (isSimulated) {
-        // Run Simulated Flow Directly
-      } else {
-        // Real API Call
-        try {
-          const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&timeMin=${new Date().toISOString()}`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
-          if (res.ok) {
-            const data = await res.json() as any;
-            fetchedEvents = data.items || [];
-          } else {
-            console.warn("Calendar API returned non-200. Falling back to simulation...");
-            isSimulated = true;
-          }
-        } catch (e) {
-          console.warn("Google Calendar API call failed, falling back to simulator:", e);
-          isSimulated = true;
-        }
-      }
+      const isSimulated = true;
 
       if (isSimulated || fetchedEvents.length === 0) {
         // Build simulated / mock events from Indonesian teacher's scheduling
@@ -8136,7 +8113,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
               </button>
             </div>
 
-            {/* GOOGLE CALENDAR SYNC SECTION */}
+            {/* JADWAL SYNC SECTION */}
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-150 rounded-2xl p-4.5 mb-4 space-y-3 select-none relative overflow-hidden text-slate-800 shrink-0">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">

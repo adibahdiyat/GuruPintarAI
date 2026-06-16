@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Secure helper to clean JSON string from any markdown wrappers prior to parsing
@@ -1541,10 +1540,29 @@ Format output WAJIB — hanya 9 baris teks, satu topik per baris, tanpa simbol a
     }
   });
 
+  // Global API route wildcard catch-all to prevent unrouted endpoint falls to HTML pages
+  app.use("/api/*", (req, res, next) => {
+    res.status(404).json({
+      success: false,
+      error: `Endpoint API '${req.originalUrl}' tidak ditemukan`
+    });
+  });
+
+  // Global Exception Handling Middleware to guarantee that any backend crash triggers a clean JSON response (never HTML!)
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error("GLOBAL SERVER ERROR:", err);
+    res.status(err.status || 500).json({
+      success: false,
+      error: err.message || "Terjadi kesalahan internal pada server",
+      details: String(err)
+    });
+  });
+
   if (!process.env.VERCEL) {
     const startStandalone = async () => {
       // Serve Single-Page React App
       if (process.env.NODE_ENV !== "production") {
+        const { createServer: createViteServer } = await import("vite");
         const vite = await createViteServer({
           server: { middlewareMode: true },
           appType: "spa",
