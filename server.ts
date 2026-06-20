@@ -25,10 +25,9 @@ async function generateContentWithRetryAndFallback(
 ): Promise<any> {
   // Gunakan rangkaian model terbaru dari @google/genai yang valid dan didukung penuh saat ini (menghindari model yang didepresiasi)
   const models = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest"
   ];
   let lastError: any = null;
 
@@ -99,9 +98,7 @@ async function generateContentWithRetryAndFallback(
       errorMsg.includes("429")
     ) {
       throw new Error(
-        "Layanan AI saat ini sedang sangat padat (Error 503/429: High Demand). Kami telah mencoba 4 model fallback (" +
-        models.join(", ") +
-        ") dengan total 12 percobaan, namun sistem sedang sibuk. Silakan coba klik tombol generate kembali beberapa saat lagi, atau masukkan API Key pribadi Anda di menu profil untuk prioritas akses tanpa batas."
+        `Layanan AI saat ini sedang sangat padat (Error 503/429: High Demand). Kami telah mencoba ${models.length} model fallback (${models.join(", ")}) dengan total ${models.length * maxRetries} percobaan, namun sistem sedang sibuk. Silakan coba klik tombol generate kembali beberapa saat lagi, atau masukkan API Key pribadi Anda di menu profil untuk prioritas akses tanpa batas.`
       );
     }
   }
@@ -110,7 +107,7 @@ async function generateContentWithRetryAndFallback(
 }
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Utilize standard body parser with a large payload limit to support textbook images
 app.use(express.json({ limit: "50mb" }));
