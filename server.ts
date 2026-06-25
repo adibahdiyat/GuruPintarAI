@@ -1,1 +1,5 @@
-module.exports = globalThis.DOMException;
+{
+  "name": "node-domexception",
+  "version": "1.0.0",
+  "main": "index.js"
+}

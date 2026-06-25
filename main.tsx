@@ -1,230 +1,445 @@
-import { GenerateResult } from "./types";
+import React, { useState, useEffect } from "react";
+import { 
+  CheckCircle2, 
+  Square, 
+  CheckSquare, 
+  Sparkles, 
+  Info, 
+  Award, 
+  ClipboardCheck, 
+  HelpCircle, 
+  AlertTriangle,
+  Lightbulb,
+  ArrowRight,
+  BookOpen
+} from "lucide-react";
+import { ModulAjarRppMerdeka, MagicStudioOutput } from "../types";
 
-export const LOADING_QUOTES = [
-  "Kurikulum Merdeka mendorong kebebasan berpikir kreatif siswa...",
-  "Menyusun langkah apersepsi interaktif berbasis kecerdasan visual...",
-  "Merancang aktivitas kuis mandiri penunjang asesmen formatif...",
-  "Menyesuaikan diksi materi agar ramah anak dan sarat makna..."
-];
+interface RppFormattingGuideProps {
+  rpp?: ModulAjarRppMerdeka | null;
+  magicStudioOutput?: MagicStudioOutput | null;
+  showToast: (msg: string) => void;
+}
 
-export const TEACHER_PRESETS = [
-  {
-    title: "Siklus Air & Hujan",
-    level: "SD Kelas 1-6",
-    subject: "IPAS (IPA & IPS Gabungan)",
-    text: "Siklus air terdiri dari evaporasi air laut karena panas matahari, kondensasi uap menjadi awan mendung, presipitasi berupa hujan, dan infiltrasi air kembali ke dalam tanah."
-  },
-  {
-    title: "Hafalan Surat Ad-Dhuha",
-    level: "SD Kelas 1-6",
-    subject: "Tahfidz",
-    text: "Melafalkan surat Ad-Dhuha secara tartil dengan tajwid yang benar (mad asli, ghunnah), memahami kandungan nikmat kelapangan dada, dan menyayangi anak yatim."
-  },
-  {
-    title: "Sejarah Fathu Makkah",
-    level: "SMP",
-    subject: "Sejarah Kebudayaan Islam (SKI)",
-    text: "Menganalisis latar belakang peristiwa pembebasan kota Makkah (Fathu Makkah) pada tahun 8 Hijriah, sikap pemaaf Rasulullah SAW terhadap penduduk Quraisy, dan runtuhnya berhala di Ka'bah."
-  }
-];
+interface ChecklistItem {
+  id: string;
+  section: string;
+  title: string;
+  description: string;
+  tip: string;
+  fieldChecked?: string; // key path or description to auto check
+  category: "identitas" | "tujuan" | "asesmen" | "lampiran";
+}
 
-export const DEFAULT_INITIAL_RESULT: GenerateResult = {
-  modul_ajar_rpp_merdeka: {
-    komponen_inti: {
-      tujuan_pembelajaran: "1. Mengidentifikasi komponen-komponen lingkungan biotik (makhluk hidup seperti tanaman dan hewan) dan abiotik (benda tak hidup seperti air, tanah, intensitas cahaya, suhu) dalam ekosistem lokal melalui pengamatan empiris dan penyelidikan ilmiah luar kelas langsung.\n2. Menganalisis alur konversi energi kognitif dari foton matahari menjadi energi kimia dalam produsen (tumbuhan) hingga disalurkan ke konsumen tingkat I, II, dan III melalui jaring-jaring rantai makanan lokal secara terperinci.",
-      alur_tujuan_pembelajaran: "Fase B (Mulai Kelas 4 - 6 Jenjang Sekolah Dasar):\n- ATP-1: Mengidentifikasi dan memetakan komponen biotik dan abiotik di ekosistem lingkungan sekolah melalui observasi terstruktur.\n- ATP-2: Menguraikan peranan esensial klorofil dan fotosintesis sebagai mesin produksi energi primer tunggal bagi kelangsungan hidup organisme autotrof.\n- ATP-3: Menghubungkan kepunahan makhluk predator serta fluktuasi jumlah produsen dengan kestabilan ekosistem, serta menyelesaikan studi kasus kerusakan lingkungan lokal.",
-      materi_pokok: "Fotosintesis adalah suatu metabolisme biokimia vital di mana tumbuhan berklorofil bereaksi mereaksikan air (dari tanah) dan gas karbondioksida (dari udara bebas) menjadi karbohidrat/glukosa dan melepaskan oksigen jernih ke atmosfer dengan bantuan asimilasi sinar foton matahari. Ekosistem rantai makanan menggambarkan siklus sirkular aliran energi dari produsen ke konsumen primer (herbivora), konsumen sekunder (karnivora), konsumen tersier (predator puncak) hingga diuraikan kembali oleh dekomposer tanah."
+export const RppFormattingGuide: React.FC<RppFormattingGuideProps> = ({
+  rpp,
+  magicStudioOutput,
+  showToast
+}) => {
+  // Define standard criteria for Kurikulum Merdeka administrative check
+  const defaultCriteria: ChecklistItem[] = [
+    {
+      id: "kop_sekolah",
+      section: "I. Identitas & Legalitas KOP",
+      title: "KOP Surat & Identitas Instansi Lengkap",
+      description: "Memiliki kop surat resmi instansi atau sekolah, nomor akreditasi, nama guru, mata pelajaran, fase, kelas, semester, dan alokasi waktu.",
+      tip: "Gunakan fitur 'Edit Profil' di kanan atas untuk menyisipkan nama instansi dan NIP guru agar tercetak otomatis di KOP RPP.",
+      category: "identitas"
     },
-    langkah_pembelajaran: {
-      kegiatan_pembuka: "Durasi Pertemuan Pembuka (15 Menit):\n1. Pendidik mengawali pembelajaran dengan salam hangat penuh semangat, mengkondisikan ruang kelas, memimpin ritual doa bersama, dan mengecek kehadiran murid secara interaktif melalui presensi digital GuruPintar.\n2. Guru menampilkan dua buah pembanding visual konkret di depan kelas: selembar daun hijau segar yang baru dipetik dari pohon, serta selembar daun kering kecokelatan yang telah rontok gugur.\n3. Pertanyaan Pemantik Penyelidikan Kognitif: 'Anak-anak hebat sekalian, tataplah kedua daun ini dengan saksama. Adakah yang tahu kenapa daun yang melekat di pohon bisa tetap berwarna hijau segar memikat? Dapur rahasia apa yang dimiliki pohon tersebut untuk memasak makanannya sendiri di bawah sinar matahari pagi?'\n4. Murid didorong merumuskan hipotesis awal secara lisan, mengaitkan hubungan asimilasi matahari dengan warna daun.",
-      kegiatan_inti_mendalam: "TAHAP 1: Eksperimen Detektif Gelembung Daun Luar Kelas (Durasi 30 Menit)\n- Siswa dikelompokkan secara kooperatif menjadi beberapa tim beranggotakan 4-5 anak secara merata.\n- Setiap kelompok dibekali perkakas praktikum sederhana berupa sebuah gelas kimia transparan atau botol kaca bening berisi air keran penuh jernih, serta selembar daun hijau segar yang baru saja dipetik (seperti daun beringin, mangga, atau singkong).\n- Peserta didik dipandu membawa gelas berisi daun terendam tersebut ke area terbuka luar kelas yang terpapar langsung sinar mentari terik. Siswa mengatur posisi daun menghadap matahari dan melakukan observasi mendalam selama 15 menit.\n- Siswa mencatat pembentukan bintik-bintik gelembung gas kecil (oksigen) yang menempel erat pada permukaan helai daun basah tersebut sebagai bukti empiris proses pembebasan gas hasil fotosintesis.\n\nTAHAP 2: Analisis Rantai Aliran Energi & Diskusi Interaktif (Durasi 25 Menit)\n- Kelompok kembali ke ruang kelas utama untuk berdiskusi mandiri. Tiap kelompok menggambar bagan skematis aliran energi matahari yang diserap klorofil, diolah menjadi zat tepung daun, lalu dimakan oleh serangga (konsumen I), kemudian katak (konsumen II), ular (konsumen III), hingga diuraikan cacing (dekomposer).\n- Pendidik memfasilitasi jalannya asimilasi diskusi dengan menggambarkan diagram kimiawi fotosintesis sederhana di papan tulis: CO2 + H2O + Sinar Matahari -> Glukosa/Karbohidrat + Oksigen (O2).\n\nTAHAP 3: Menyusun Laporan Kerja Kelompok (LKPD) (Durasi 15 Menit)\n- Setiap kelompok mengisi lembaran LKPD secara sinergis, menyajikan argumentasi ilmiah yang solid berdasarkan hasil pengamatan luar kelas, dan mengorelasikan fenomena terbentuknya gelembung air daun dengan teori siklus energi biologis.",
-      kegiatan_penutup: "Durasi Evaluasi Penutup (15 Menit):\n1. Pendidik memandu siswa merumuskan konklusi klasikal bersama: bahwa tanpa eksistensi tumbuhan berklorofil yang melakukan fotosintesis, suplai oksigen bumi akan habis dan rantai suplai energi seluruh makhluk hidup akan punah seketika.\n2. Guru memberikan apresiasi verbal yang luar biasa kepada kelompok terbaik, memotivasi seluruh kelas melalui yel-yel penyelamat bumi, serta melakukan refleksi umpan balik singkat.\n3. Pembelajaran ditutup dengan doa bersama penuh syukur dan salam penutup santun."
+    {
+      id: "informasi_umum",
+      section: "I. Identitas & Legalitas KOP",
+      title: "Identitas Modul & Alokasi Waktu Sesuai",
+      description: "Mencantumkan alokasi waktu yang rasional (contoh: 2 JP x 35 menit) sesuai dengan kalender akademik.",
+      tip: "Pastikan alokasi waktu tidak terlalu singkat. Idealnya untuk SD adalah 2 JP per pertemuan.",
+      category: "identitas"
     },
-    instrumen_asesmen: {
-      jenis_asesmen: "Formatif Mendalam",
-      soal_evaluasi: [
-        {
-          pertanyaan: "Apakah nama pigmen fotosensitif berwarna hijau pada sel tumbuhan yang didesain khusus untuk menyerap energi matahari guna memulai proses fotosintesis?",
-          pilihan_jawaban: ["A. Stomata", "B. Klorofil", "C. Amiloplas", "D. Mitokondria"],
-          kunci_jawaban: "B. Klorofil. Pembahasan: Klorofil merupakan zat hijau daun berlokasi di dalam organel kloroplas yang berfungsi vital menyerap radiasi gelombang elektromagnetik sinar matahari untuk memicu fotolisis air."
-        },
-        {
-          pertanyaan: "Zat hasil akhir manakah dari proses reaksi fotosintesis yang diembuskan tumbuhan hijau ke udara bebas dan sangat menentukan kelangsungan napas manusia?",
-          pilihan_jawaban: ["A. Gas Karbon Dioksida (CO2)", "B. Molekul Oksigen (O2)", "C. Senyawa Nitrogen Bebas", "D. Uap Air Belerang"],
-          kunci_jawaban: "B. Molekul Oksigen (O2). Pembahasan: Hasil utama reaksi biokimia fotosintesis adalah karbohidrat/glukosa (sebagai sumber energi internal daun) dan gas oksigen yang dibebaskan ke lingkungan sekitarnya."
-        },
-        {
-          pertanyaan: "Pada ekosistem sabana lokal, makhluk hidup manakah yang paling berhak dikategorikan sebagai produsen autotrof mandiri?",
-          pilihan_jawaban: ["A. Belalang Sembah", "B. Burung Pipit Jalak", "C. Rumput Gajah Hijau", "D. Singa Penguasa Hutan"],
-          kunci_jawaban: "C. Rumput Gajah Hijau. Pembahasan: Rumput gajah dikategorikan sebagai produsen primer autotrof karena memiliki sel berklorofil yang sanggup merakit bahan makanan organik sendiri melalui fotosintesis."
-        },
-        {
-          pertanyaan: "Apakah gas senyawa polutan di udara bebas yang dengan tekun diserap klorofil untuk mensintesis glukosa karbohidrat pada tumbuhan hijau?",
-          pilihan_jawaban: ["A. Oksigen Terlarut", "B. Gas Helium Ringan", "C. Karbon Dioksida (CO2)", "D. Ozon Pelindung"],
-          kunci_jawaban: "C. Karbon Dioksida (CO2). Pembahasan: Karbon Dioksida (CO2) adalah bahan baku utama sumber atom karbon untuk dirangkai menjadi rantai karbon hidrat glukosa dalam siklus reaksi gelap fotosintesis."
-        },
-        {
-          pertanyaan: "Bila populasi serangga herbivora pemakan rumput mendadak punah karena pestisida berlebih, dampak ekologis langsung apakah yang mula-mula dirasakan tumbuhan produsen sekitar?",
-          pilihan_jawaban: ["A. Tumbuhan layu mengering seketika", "B. Tumbuhan berkembang sangat pesat tanpa seleksi pemakan", "C. Tumbuhan berhenti berfotosintesis dan berguguran", "D. Tumbuhan memproduksi cadangan air berlebih di dahan"],
-          kunci_jawaban: "B. Tumbuhan berkembang sangat pesat tanpa seleksi pemakan. Pembahasan: Tanpa kehadiran serangga herbivora pemakan daun, rumput atau tumbuhan produsen akan tumbuh merajalela tanpa kendali alami melampaui daya tampung daerah tersebut."
-        },
-        {
-          pertanyaan: "Bagian organ manakah pada tumbuhan yang berfungsi menyerap air dan garam-garam mineral dari dasar tanah untuk disalurkan ke daun dalam proses fotosintesis?",
-          pilihan_jawaban: ["A. Sel klorofil daun", "B. Mulut stomata", "C. Struktur akar", "D. Kelopak bunga"],
-          kunci_jawaban: "C. Struktur akar. Pembahasan: Akar tanaman menyerap air (H2O) dan unsur hara dari dalam tanah kemudian memanfaatkannya sebagai bahan penunjang proses asimilasi hijau daun."
-        },
-        {
-          pertanyaan: "Pembuluh kayu apakah yang bertugas khusus mengangkut air dan mineral dari akar naik menuju daun untuk bahan fotosintesis?",
-          pilihan_jawaban: ["A. Epidermis", "B. Floem", "C. Xilem", "D. Kambium pembatas"],
-          kunci_jawaban: "C. Xilem. Pembahasan: Xilem adalah pembuluh kayu yang mengangkut air dan mineral dari akar ke daun, sedangkan Floem bertugas menyebarkan zat makanan hasil fotosintesis ke seluruh tubuh tumbuhan."
-        },
-        {
-          pertanyaan: "Di dalam sel tumbuhan, di manakah letak organel spesifik tempat terjadinya seluruh rangkaian proses fotosintesis?",
-          pilihan_jawaban: ["A. Ribosom", "B. Lisosom", "C. Kloroplas", "D. Vakuola Tengah"],
-          kunci_jawaban: "C. Kloroplas. Pembahasan: Kloroplas adalah plastida bermembran ganda yang di dalamnya kaya akan pigmen klorofil dan menjadi wadah reaksi terang maupun reaksi gelap fotosintesis."
-        },
-        {
-          pertanyaan: "Celah kecil pada permukaan luar epidermis daun yang berfungsi sebagai gerbang utama pertukaran gas karbondioksida dan oksigen disebut sebagai...",
-          pilihan_jawaban: ["A. Plastida", "B. Stomata", "C. Lentisel Batang", "D. Kutikula Lilin"],
-          kunci_jawaban: "B. Stomata. Pembahasan: Stomata adalah celah kecil mikroskopis pada epidermis daun yang didampingi sel penjaga untuk mengatur laju respirasi dan transpirasi gas tumbuhan."
-        },
-        {
-          pertanyaan: "Berapakah perkiraan rata-rata persentase efisiensi transfer energi murni yang berhasil disalurkan dari satu tingkat trofik ke tingkat trofik berikutnya dalam rantai pangan ekosistem?",
-          pilihan_jawaban: ["A. Sekitar 10%", "B. Sekitar 50%", "C. Sekitar 90%", "D. Sekitar 100%"],
-          kunci_jawaban: "A. Sekitar 10%. Pembahasan: Menurut hukum ekologi Lindeman Lintasan Energi, hanya sekitar 10% energi kimia murni dari satu tingkat trofik (misal produsen) yang dapat ditransformasikan menjadi biomassa tubuh pada tingkat trofik di atasnya."
-        }
-      ]
+    {
+      id: "tujuan_pembe",
+      section: "II. Komponen Inti & Alur Tujuan (ATP)",
+      title: "Tujuan Pembelajaran (TP) Eksplisit & Terukur",
+      description: "Tujuan pembelajaran memuat kompetensi (keterampilan) dan ruang lingkup materi secara jelas menggunakan kata kerja operasional (KKO).",
+      tip: "Tujuan yang baik mencakup audiens, perilaku (behavior), kondisi (condition), dan derajat (degree) keberhasilan (ABCD).",
+      category: "tujuan"
+    },
+    {
+      id: "pemahaman_bermakna",
+      section: "II. Komponen Inti & Alur Tujuan (ATP)",
+      title: "Pemahaman Bermakna & Pertanyaan Pemantik",
+      description: "Mencantumkan manfaat nyata materi bagi kehidupan sehari-hari (pemahaman bermakna) dan pertanyaan pemantik pemantik nalar kritis.",
+      tip: "Pertanyaan pemantik tidak boleh sekadar berupa hafalan. Ajukan pertanyaan terbuka (open-ended) seperti 'Bagaimana jika...?'",
+      category: "tujuan"
+    },
+    {
+      id: "kegiatan_inti",
+      section: "II. Komponen Inti & Alur Tujuan (ATP)",
+      title: "Langkah Skenario Pembelajaran 3 Tahap",
+      description: "Skenario runtut dari Pendahuluan (apersepsi, motivasi), Kegiatan Inti (penerapan metode saintifik/merdeka), hingga Penutup (refleksi, simpulan, tindak lanjut).",
+      tip: "Gunakan variasi metode interaktif seperti Diskusi Kelompok, Snowball Throwing, atau Proyek Mandiri untuk mengaktifkan siswa.",
+      category: "tujuan"
+    },
+    {
+      id: "asesmen_as_learning",
+      section: "III. Desain Asesmen & Evaluasi",
+      title: "Asesmen Sikap (Profil Pelajar Pancasila)",
+      description: "Mencantumkan lembar observasi atau rubrik penilaian sikap yang membidik dimensi Profil Pelajar Pancasila (bergotong royong, mandiri, dll).",
+      tip: "Cukup fokus pada 2-3 dimensi Profil Pelajar Pancasila yang paling relevan dengan materi agar observasi guru tetap realistis.",
+      category: "asesmen"
+    },
+    {
+      id: "lembar_soal_multiple",
+      section: "III. Desain Asesmen & Evaluasi",
+      title: "Lembar Evaluasi Tertulis Standardisasi",
+      description: "Memiliki butir soal evaluasi pilihan ganda yang memadai (minimal 10 soal) dengan opsi pilihan yang bervariasi.",
+      tip: "Pastikan opsi pilihan ganda konsisten (A, B, C untuk SD kelas rendah; A, B, C, D untuk SD kelas tinggi).",
+      category: "asesmen"
+    },
+    {
+      id: "kunci_jawaban_pembahasan",
+      section: "III. Desain Asesmen & Evaluasi",
+      title: "Kunci Jawaban & Pembahasan Sistematis",
+      description: "Menyediakan kunci jawaban lengkap beserta alasan/pembahasan logis di lampiran guru sebagai pemandu umpan balik.",
+      tip: "Kunci jawaban harus dicetak di lembar terpisah atau berlabel 'LAMPIRAN GURU' agar tidak terbaca oleh siswa saat ujian.",
+      category: "asesmen"
+    },
+    {
+      id: "lkpd_lampiran",
+      section: "IV. Media, Refleksi & Lampiran",
+      title: "Lembar Kerja Peserta Didik (LKPD) Cetak",
+      description: "Menyertakan LKPD mandiri/kelompok yang memuat petunjuk kerja, bahan alat, dan instruksi penyelesaian tugas bagi murid.",
+      tip: "LKPD yang baik mengarah pada aktivitas fisik dan asimilasi informasi secara nyata, bukan sekadar rangkuman materi biasa.",
+      category: "lampiran"
+    },
+    {
+      id: "remedial_pengayaan",
+      section: "IV. Media, Refleksi & Lampiran",
+      title: "Rencana Remedial & Pengayaan",
+      description: "Menyediakan arahan tugas tambahan bagi siswa yang belum mencapai tujuan, serta materi pengayaan bagi siswa yang tuntas cepat.",
+      tip: "Remedial bisa berupa bimbingan perorangan, tutor sebaya, atau penyederhanaan soal evaluasi.",
+      category: "lampiran"
     }
-  },
-  ppt_canva_ready_slides: [
-    {
-      slide_nomor: 1,
-      layout_template: "Title Slide",
-      judul_halaman: "Dapur Ajaib Daun Hijau",
-      isi_poin_materi: [
-        "Daun hijau menyimpan dapur rahasia bernama fotosintesis.",
-        "Matahari pagi menyuplai energi reaktif memasak nutrisi alami."
-      ],
-      image_generation_prompt: "3D cute illustration, clay/papercut style, vivid color, highly detailed, soft lighting, educational kid-friendly composition illustrating the complete rain cycle within one frame: ocean water evaporating upward into cute smiling puffy clouds, condensation forming rain droplets falling over lovely green mountains, and forest rivers flowing back to the brilliant blue sea, all elements connected in an elegant circular graphic cycle"
-    },
-    {
-      slide_nomor: 2,
-      layout_template: "Content Slide",
-      judul_halaman: "Proses Asimilasi Air & Karbon",
-      isi_poin_materi: [
-        "Akar dengan tekun menghisap air mineral dari dasar tanah.",
-        "Stomata menghirup karbon dioksida bebas dari polusi udara."
-      ],
-      image_generation_prompt: "3D cute illustration, clay/papercut style, vivid color, highly detailed, soft lighting, educational kid-friendly composition showing a cute kid holding a magnifying glass inspecting water bubbles on a bright green plant leaf under warm sunshine"
-    },
-    {
-      slide_nomor: 3,
-      layout_template: "Summary Slide",
-      judul_halaman: "Aliran Energi Ekosistem Lokal",
-      isi_poin_materi: [
-        "Tumbuhan memelihara ekosistem sebagai produsen mandiri.",
-        "Konsumen dan dekomposer melestarikan siklus sirkulasi tanah."
-      ],
-      image_generation_prompt: "3D cute illustration, clay/papercut style, vivid color, highly detailed, soft lighting, educational kid-friendly composition showing a happy rabbit munching a carrot near a smiling tree with forest butterflies"
-    }
-  ],
-  saran_youtube_spesifik: {
-    keyword_pencarian_utama: "Animasi Fotosintesis Sekolah Dasar"
-  },
-  magic_studio_output: {
-    rpp_merdeka_formal: {
-      komponen_umum: "SD Kelas 4 - IPAS (Ilmu Pengetahuan Alam dan Sosial) Kurikulum Merdeka Terpadu 2026",
-      tujuan_pembelajaran: "1. Mengidentifikasi dan membuktikan komponen biotik dan abiotik yang saling berinteraksi di ekosistem sekolah melalui penyelidikan ilmiah konkret.\n2. Membedah peran fotosintesis sebagai tulang punggung sirkulasi energi jaring makanan lokal berdasarkan uji kelayakan gelembung udara daun.",
-      langkah_pembelajaran_rinci: "A. KEGIATAN PENDAHULUAN (Durasi 15 Menit):\n- Guru mengucapkan salam pembuka religius, mengecek kedisiplinan ruang belajar, menyanyikan lagu nasional, dan mengabsen siswa dengan sistem absensi digital.\n- Guru membawa sampel daun segar dan daun layu gersang ke depan kelas untuk mengusik pemikiran logis siswa.\n- Guru melempar hipotesis kognitif pemantik: 'Bagaimana tanaman hijau sanggup mempertahankan asupan nutrisinya di bawah pancaran terik matahari tanpa memakan zat eksternal?'\n\nB. KEGIATAN INTI PENYELIDIKAN (Durasi 55 Menit):\n- Langkah 1: Guru membagi kelompok murid heterogen beranggotakan masing-masing 4-5 anak. Tiap tim diberikan botol bening berisi daun hijau terendam air.\n- Langkah 2: Siswa dipandu ke luar kelas membawa botol tersebut untuk disinari sinar matahari langsung selama kurang lebih 15 menit.\n- Langkah 3: Murid berdiskusi mengidentifikasi gelembung gas oksigen mikroskopis yang keluar menempel pada helai daun segar.\n- Langkah 4: Kembali ke kelas untuk menggambar jaring-jaring sirkulasi makanan mulai dari rantai rumput ke ulat, katak, ular, burung elang, hingga bakteri pengurai.\n- Langkah 5: Kelas dipandu merangkum asimilasi kimiawi glukosa dan oksigen dari dekomposisi asupan karbon dioksida di papan tulis.\n\nC. KEGIATAN PENUTUP & REFLEKSI (Durasi 15 Menit):\n- Siswa merangkum poin esensial mengenai fotosintesis bersama pendidik.\n- Siswa memperoleh umpan balik positif dari guru dan menyatukan komitmen penyelamatan kelestarian flora bumi melalui tepuk fokus.\n- Doa syukur bersama penutup dipimpin oleh salah satu ketua tim kelas."
-    },
-    lembar_kerja_peserta_didik_lkpd: {
-      judul_aktivitas: "Penyelidikan Detektif Kecil: Membedah Dapur Fotosintesis & Gelembung Oksigen Daun",
-      petunjuk_belajar: "1. Berkumpulah secara tertib bersama anggota kelompok kecil Anda yang terdiri atas 4 sampai 5 orang siswa.\n2. Siapkan botol kaca transparan jernih, isi air tawar bersih sampai penuh, lalu masukkan selembar daun beringin/mangga segar yang masih hijau.\n3. Letakkan botol berisi daun terendam tersebut di lapangan sekolah yang mendapat pancaran sinar matahari penuh selama 15 menit.\n4. Amati gelembung kecil yang terbentuk, catat hasil diskusi pengerjaan tugas tepercaya di lembar kerja ini, dan tunjuk presenter kelompok untuk berbagi kesimpulan di depan kelas.",
-      soal_atau_tugas_lapangan: [
-        "Uraikan analisis komparatif kelompokmu mengenai perbedaan nyata proses metabolisme tumbuhan hijau berklorofil yang terpapar matahari langsung dengan tumbuhan yang ditaruh di dalam ruang gelap gulita!",
-        "Mengapa air di dalam botol kaca bisa memicu kemunculan butir gelembung di permukaan daun saat disorot sinar matahari? Gas esensial apakah yang terkandung dalam gelembung kecil tersebut?",
-        "Petakan dan gambarkan diagram jaring-jaring makanan melingkar sederhana yang terjadi pada ekosistem kebun buah sekolah Anda, serta sebutkan komponen biotik dan abiotik yang terlibat di dalamnya!"
-      ]
-    },
-    paket_asesmen_penilaian_lengkap: {
-      tipe: "Asesmen Sumatif Tengah Semester",
-      butir_soal_multiple_choice: [
-        {
-          no: 1,
-          pertanyaan: "Apakah nama pigmen fotosensitif berwarna hijau pada sel tumbuhan yang didesain khusus untuk menyerap energi matahari guna memulai proses fotosintesis?",
-          pilihan: ["A. Stomata", "B. Klorofil", "C. Amiloplas", "D. Mitokondria"],
-          kunci: "B",
-          pembahasan: "Klorofil merupakan zat hijau daun berlokasi di dalam organel kloroplas yang berfungsi vital menyerap radiasi gelombang elektromagnetik sinar matahari untuk memicu fotolisis air."
-        },
-        {
-          no: 2,
-          pertanyaan: "Zat hasil akhir manakah dari proses reaksi fotosintesis yang diembuskan tumbuhan hijau ke udara bebas dan sangat menentukan kelangsungan napas manusia?",
-          pilihan: ["A. Gas Karbon Dioksida (CO2)", "B. Molekul Oksigen (O2)", "C. Senyawa Nitrogen Bebas", "D. Uap Air Belerang"],
-          kunci: "B",
-          pembahasan: "Hasil utama reaksi biokimia fotosintesis adalah karbohidrat/glukosa (sebagai sumber energi internal daun) dan gas oksigen yang dibebaskan ke lingkungan sekitarnya."
-        },
-        {
-          no: 3,
-          pertanyaan: "Pada ekosistem sabana lokal, makhluk hidup manakah yang paling berhak dikategorikan sebagai produsen autotrof mandiri?",
-          pilihan: ["A. Belalang Sembah", "B. Burung Pipit Jalak", "C. Rumput Gajah Hijau", "D. Singa Penguasa Hutan"],
-          kunci: "C",
-          pembahasan: "Rumput gajah dikategorikan sebagai produsen primer autotrof karena memiliki sel berklorofil yang sanggup merakit bahan makanan organik sendiri melalui fotosintesis."
-        },
-        {
-          no: 4,
-          pertanyaan: "Apakah gas senyawa polutan di udara bebas yang dengan tekun diserap klorofil untuk mensintesis glukosa karbohidrat pada tumbuhan hijau?",
-          pilihan: ["A. Oksigen Terlarut", "B. Gas Helium Ringan", "C. Karbon Dioksida (CO2)", "D. Ozon Pelindung"],
-          kunci: "C",
-          pembahasan: "Karbon Dioksida (CO2) adalah bahan baku utama sumber atom karbon untuk dirangkai menjadi rantai karbon hidrat glukosa dalam siklus reaksi gelap fotosintesis."
-        },
-        {
-          no: 5,
-          pertanyaan: "Bila populasi serangga herbivora pemakan rumput mendadak punah karena pestisida berlebih, dampak ekologis langsung apakah yang mula-mula dirasakan tumbuhan produsen sekitar?",
-          pilihan: ["A. Tumbuhan layu mengering seketika", "B. Tumbuhan berkembang sangat pesat tanpa seleksi pemakan", "C. Tumbuhan berhenti berfotosintesis dan berguguran", "D. Tumbuhan memproduksi cadangan air berlebih di dahan"],
-          kunci: "B",
-          pembahasan: "Tanpa kehadiran serangga herbivora pemakan daun, rumput atau tumbuhan produsen akan tumbuh merajalela tanpa kendali alami melampaui daya tampung daerah tersebut."
-        },
-        {
-          no: 6,
-          pertanyaan: "Bagian organ manakah pada tumbuhan yang berfungsi menyerap air dan garam-garam mineral dari dasar tanah untuk disalurkan ke daun dalam proses fotosintesis?",
-          pilihan: ["A. Sel klorofil daun", "B. Mulut stomata", "C. Struktur akar", "D. Kelopak bunga"],
-          kunci: "C",
-          pembahasan: "Akar tanaman menyerap air (H2O) dan unsur hara dari dalam tanah kemudian memanfaatkannya sebagai bahan penunjang proses asimilasi hijau daun."
-        },
-        {
-          no: 7,
-          pertanyaan: "Pembuluh kayu apakah yang bertugas khusus mengangkut air dan mineral dari akar naik menuju daun untuk bahan fotosintesis?",
-          pilihan: ["A. Epidermis", "B. Floem", "C. Xilem", "D. Kambium pembatas"],
-          kunci: "C",
-          pembahasan: "Xilem adalah pembuluh kayu yang mengangkut air dan mineral dari akar ke daun, sedangkan Floem bertugas menyebarkan zat makanan hasil fotosintesis ke seluruh tubuh tumbuhan."
-        },
-        {
-          no: 8,
-          pertanyaan: "Di dalam sel tumbuhan, di manakah letak organel spesifik tempat terjadinya seluruh rangkaian proses fotosintesis?",
-          pilihan: ["A. Ribosom", "B. Lisosom", "C. Kloroplas", "D. Vakuola Tengah"],
-          kunci: "C",
-          pembahasan: "Kloroplas adalah plastida bermembran ganda yang di dalamnya kaya akan pigmen klorofil dan menjadi wadah reaksi terang maupun reaksi gelap fotosintesis."
-        },
-        {
-          no: 9,
-          pertanyaan: "Celah kecil pada permukaan luar epidermis daun yang berfungsi sebagai gerbang utama pertukaran gas karbondioksida dan oksigen disebut sebagai...",
-          pilihan: ["A. Plastida", "B. Stomata", "C. Lentisel Batang", "D. Kutikula Lilin"],
-          kunci: "B",
-          pembahasan: "Stomata adalah celah kecil mikroskopis pada epidermis daun yang didampingi sel penjaga untuk mengatur laju respirasi dan transpirasi gas tumbuhan."
-        },
-        {
-          no: 10,
-          pertanyaan: "Berapakah perkiraan rata-rata persentase efisiensi transfer energi murni yang berhasil disalurkan dari satu tingkat trofik ke tingkat trofik berikutnya dalam rantai pangan ekosistem?",
-          pilihan: ["A. Sekitar 10%", "B. Sekitar 50%", "C. Sekitar 90%", "D. Sekitar 100%"],
-          kunci: "A",
-          pembahasan: "Menurut hukum ekologi Lindeman Lintasan Energi, hanya sekitar 10% energi kimia murni dari satu tingkat trofik (misal produsen) yang dapat ditransformasikan menjadi biomassa tubuh pada tingkat trofik di atasnya."
+  ];
+
+  // Selected checklist item IDs state
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  // Store customized inputs
+  const [customNotes, setCustomNotes] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"all" | "identitas" | "tujuan" | "asesmen" | "lampiran">("all");
+  const [autoEvaluated, setAutoEvaluated] = useState<boolean>(false);
+
+  // Auto-evaluator logic
+  useEffect(() => {
+    if (rpp || magicStudioOutput) {
+      const autoChecked: string[] = ["kop_sekolah", "informasi_umum"]; // Instansi & basic info usually exists
+
+      // Test Rpp data
+      if (rpp) {
+        if (rpp.tujuan_pembelajaran || rpp.kegiatan_belajar?.kegiatan_inti) {
+          autoChecked.push("tujuan_pembe");
         }
-      ]
-    },
-    kolom_ice_breaking_mandiri: {
-      nama_permainan: "Permainan Rantai Energi Fotosintesis (Eco-Chain)",
-      langkah_bermain: "1. Guru membagi peran cepat siswa di kelas: kelompok Matahari (foton), kelompok Tumbuhan (berjongkok), dan kelompok Herbivora (berdiri).\n2. Saat guru berteriak 'Foton Terbit!', pemain Matahari lekas memberi tepukan bergantian ke Tumbuhan.\n3. Kelompok Tumbuhan harus jongkok tegak dinamis sambil bergumam 'Mengembuskan Oksigen!' sebelum kelompok Herbivora datang berpegangan tangan meligari pohon beringin."
-    },
-    prompt_gambar_topik: "3D cute illustration, clay style, vivid color, highly detailed, soft lighting depicting a glowing sun warming a lush green smiling plant leaf with tiny water droplets, clean design, zero background frames"
-  }
+        if (rpp.pertanyaan_pemantik || rpp.pemahaman_bermakna) {
+          autoChecked.push("pemahaman_bermakna");
+        }
+        if (rpp.kegiatan_belajar?.kegiatan_inti && rpp.kegiatan_belajar?.kegiatan_pendahuluan) {
+          autoChecked.push("kegiatan_inti");
+        }
+        if (rpp.instrumen_asesmen?.rubrik_sikap_performa || rpp.instrumen_asesmen?.kriteria_kelulusan) {
+          autoChecked.push("asesmen_as_learning");
+        }
+        if (rpp.instrumen_asesmen?.soal_evaluasi && rpp.instrumen_asesmen.soal_evaluasi.length > 0) {
+          autoChecked.push("lembar_soal_multiple");
+        }
+        if (rpp.instrumen_asesmen?.soal_evaluasi && rpp.instrumen_asesmen.soal_evaluasi.some(s => s.kunci_jawaban)) {
+          autoChecked.push("kunci_jawaban_pembahasan");
+        }
+        if (rpp.kegiatan_belajar?.skenario_remedial_pengayaan) {
+          autoChecked.push("remedial_pengayaan");
+        }
+        if (rpp.lembar_kerja_siswa) {
+          autoChecked.push("lkpd_lampiran");
+        }
+      }
+
+      // Overrides from Magic Studio Output
+      if (magicStudioOutput) {
+        if (magicStudioOutput.paket_asesmen_penilaian_lengkap?.butir_soal_multiple_choice?.length > 0) {
+          if (!autoChecked.includes("lembar_soal_multiple")) autoChecked.push("lembar_soal_multiple");
+          if (!autoChecked.includes("kunci_jawaban_pembahasan")) autoChecked.push("kunci_jawaban_pembahasan");
+        }
+      }
+
+      setCheckedIds(autoChecked);
+      setAutoEvaluated(true);
+    }
+  }, [rpp, magicStudioOutput]);
+
+  const toggleCheck = (id: string) => {
+    if (checkedIds.includes(id)) {
+      setCheckedIds(checkedIds.filter(item => item !== id));
+    } else {
+      setCheckedIds([...checkedIds, id]);
+    }
+  };
+
+  const getPercentage = () => {
+    if (defaultCriteria.length === 0) return 0;
+    return Math.round((checkedIds.length / defaultCriteria.length) * 100);
+  };
+
+  const getStatusBadge = () => {
+    const pct = getPercentage();
+    if (pct < 50) {
+      return {
+        text: "⚠️ Kurang Lengkap (Perlu Kelengkapan)",
+        color: "bg-red-50 text-red-700 border-red-200.5",
+        textClr: "text-red-750"
+      };
+    } else if (pct < 85) {
+      return {
+        text: "🟡 Cukup Layak (Siap Uji Coba)",
+        color: "bg-amber-50 text-amber-700 border-amber-200.5",
+        textClr: "text-amber-750"
+      };
+    } else {
+      return {
+        text: "🟢 Sangat Lengkap (Siap Cetak & Akreditasi)",
+        color: "bg-emerald-50 text-emerald-700 border-emerald-250",
+        textClr: "text-emerald-750"
+      };
+    }
+  };
+
+  const currentStatus = getStatusBadge();
+  const percentage = getPercentage();
+
+  // Filter criteria based on active subtab
+  const filteredCriteria = defaultCriteria.filter(item => {
+    if (activeTab === "all") return true;
+    return item.category === activeTab;
+  });
+
+  return (
+    <div id="rpp-formatting-guide" className="bg-slate-50 border border-slate-200 p-6 rounded-2xl shadow-xs space-y-6 select-none animate-fade-in no-print">
+      
+      {/* Header Title with Badge */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] bg-[#1E3A8A] text-white font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+              STANDAR ADMINISTRASI NASIONAL
+            </span>
+            <span className="text-[9px] bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+              <Sparkles className="w-2.5 h-2.5" /> Kurikulum Merdeka
+            </span>
+          </div>
+          <h3 className="text-base font-black text-[#0D1D34] font-display mt-1.5 flex items-center gap-1.5">
+            📋 Lembar Kendali Mutu &amp; Kelayakan RPP
+          </h3>
+          <p className="text-slate-500 text-xs mt-0.5 font-sans">
+            Gunakan checklist interaktif ini untuk memastikan modul ajar RPP Anda memenuhi standar verifikasi Tim Pengawas Sekolah.
+          </p>
+        </div>
+
+        {/* Dynamic score summary */}
+        <div className="bg-white border border-slate-200.5 p-3 rounded-xl flex items-center gap-3 shadow-3xs shrink-0 w-full md:w-auto">
+          <div className="text-center bg-slate-900 text-white rounded-lg p-2.5 px-3.5 shrink-0">
+            <strong className="text-xl font-mono font-black">{percentage}%</strong>
+            <span className="text-[8px] block text-slate-400 font-extrabold uppercase mt-0.5">Kelayakan</span>
+          </div>
+          <div className="leading-tight">
+            <span className="text-[9px] text-slate-400 font-black tracking-wide uppercase">STATUS DOKUMEN:</span>
+            <div className={`text-[11px] font-black mt-1 px-2.5 py-0.5 border rounded-full w-max ${currentStatus.color}`}>
+              {currentStatus.text}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress visual with custom thresholds */}
+      <div className="bg-white border border-slate-200.5 p-4 rounded-xl space-y-3.5 shadow-3xs">
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-slate-650 font-black">Persentase Persyaratan Terbaca</span>
+          <span className="font-mono font-extrabold text-[#1E3A8A]">{checkedIds.length} dari {defaultCriteria.length} Kriteria Terpenuhi</span>
+        </div>
+        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden relative border border-slate-200/50">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-500 rounded-full"
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+        <div className="grid grid-cols-3 text-[9.5px] font-bold text-slate-400 pt-1 border-t border-slate-100 uppercase font-mono">
+          <div className="text-left">🚫 Belum Cukup (&lt;50%)</div>
+          <div className="text-center text-amber-500">⏳ Cukup Layak (50%-85%)</div>
+          <div className="text-right text-emerald-600">🚀 Sangat Layak (&gt;85%)</div>
+        </div>
+      </div>
+
+      {autoEvaluated && (
+        <div className="bg-emerald-50/75 border border-emerald-250 p-3 rounded-xl flex items-start gap-2.5 text-xs text-emerald-950">
+          <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <div>
+            <strong className="font-black block text-emerald-900">✨ Analisis Cerdas AI Aktif!</strong>
+            <p className="text-emerald-800 font-medium">
+              Sistem telah mendeteksi kelengkapan materi RPP Anda saat ini secara otomatis dan telah mencentang {checkedIds.length} kriteria kelayakan di bawah ini.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Categories Nav tabs */}
+      <div className="flex flex-wrap gap-1.5 border-b border-slate-200 pb-2 bg-white/70 p-1.5 rounded-xl border border-slate-200/60 shadow-3xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab("all")}
+          className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${
+            activeTab === "all" ? "bg-[#1E3A8A] text-white" : "text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          Semuanya ({defaultCriteria.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("identitas")}
+          className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${
+            activeTab === "identitas" ? "bg-[#1E3A8A] text-white" : "text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          I. Identitas KOP RPP
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("tujuan")}
+          className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${
+            activeTab === "tujuan" ? "bg-[#1E3A8A] text-white" : "text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          II. Skenario &amp; ATP
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("asesmen")}
+          className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${
+            activeTab === "asesmen" ? "bg-[#1E3A8A] text-white" : "text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          III. Rubrik Asesmen
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("lampiran")}
+          className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${
+            activeTab === "lampiran" ? "bg-[#1E3A8A] text-white" : "text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          IV. Media &amp; Lampiran
+        </button>
+      </div>
+
+      {/* Main Checklist Body layout */}
+      <div className="space-y-4">
+        {filteredCriteria.length === 0 ? (
+          <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl text-slate-400">
+            <ClipboardCheck className="w-10 h-10 mx-auto text-slate-300 opacity-60 mb-2" />
+            <p className="text-xs font-semibold">Tidak ada kriteria di kategori ini.</p>
+          </div>
+        ) : (
+          filteredCriteria.map((item, idx) => {
+            const isChecked = checkedIds.includes(item.id);
+            const isAutoMatched = (rpp || magicStudioOutput) && (
+              (item.id === "kop_sekolah") ||
+              (item.id === "informasi_umum") ||
+              (item.id === "tujuan_pembe" && rpp?.tujuan_pembelajaran) ||
+              (item.id === "pemahaman_bermakna" && (rpp?.pertanyaan_pemantik || rpp?.pemahaman_bermakna)) ||
+              (item.id === "kegiatan_inti" && rpp?.kegiatan_belajar?.kegiatan_inti) ||
+              (item.id === "asesmen_as_learning" && rpp?.instrumen_asesmen?.rubrik_sikap_performa) ||
+              (item.id === "lembar_soal_multiple" && (rpp?.instrumen_asesmen?.soal_evaluasi?.length || 0) > 0) ||
+              (item.id === "kunci_jawaban_pembahasan" && rpp?.instrumen_asesmen?.soal_evaluasi?.some(s => s.kunci_jawaban)) ||
+              (item.id === "lkpd_lampiran" && rpp?.lembar_kerja_siswa) ||
+              (item.id === "remedial_pengayaan" && rpp?.kegiatan_belajar?.skenario_remedial_pengayaan)
+            );
+
+            return (
+              <div 
+                key={item.id} 
+                className={`p-4 rounded-xl border transition-all duration-200 bg-white shadow-3xs ${
+                  isChecked 
+                    ? "border-emerald-200 bg-emerald-50/15" 
+                    : "border-slate-200.5 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-start gap-3.5">
+                  {/* Custom checkbox box */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCheck(item.id)}
+                    className="p-1 text-slate-400 hover:text-[#1E3A8A] transition shrink-0 cursor-pointer"
+                  >
+                    {isChecked ? (
+                      <CheckSquare className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <Square className="w-5 h-5 text-slate-350 hover:bg-slate-50" />
+                    )}
+                  </button>
+
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-[8.5px] font-mono text-[#1E3A8A] uppercase font-bold tracking-wider">
+                        {item.section}
+                      </span>
+                      {isAutoMatched && (
+                        <span className="text-[8px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-0.5 font-mono">
+                          ✨ Auto-Terdeteksi
+                        </span>
+                      )}
+                    </div>
+                    <h4 className={`text-xs font-black text-slate-800 ${isChecked ? "line-through text-slate-450 font-bold" : ""}`}>
+                      {item.title}
+                    </h4>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      {item.description}
+                    </p>
+
+                    {/* Expandable Advice block using orange lightbulb */}
+                    <div className="p-2.5 bg-orange-50/70 border border-orange-100 rounded-lg text-[10.5px] text-orange-950 flex gap-2 font-medium">
+                      <Lightbulb className="w-3.5 h-3.5 text-orange-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-orange-900 block font-bold mb-0.5">Saran &amp; Petunjuk Teknis:</strong>
+                        <p className="text-orange-900/90 leading-relaxed font-sans">{item.tip}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Reflection feedback section */}
+      <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-3xs space-y-4">
+        <label className="text-[11px] uppercase font-black text-slate-500 block">
+          📝 Catatan Kendali Mutu Tambahan Guru (Opsional):
+        </label>
+        <textarea
+          rows={3}
+          value={customNotes}
+          onChange={(e) => setCustomNotes(e.target.value)}
+          placeholder="Tuliskan catatan revisi kurikulum, instruksi tambahan pengawas sekolah, atau rencana revisi konten di sini..."
+          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs focus:ring-1 focus:ring-blue-500 text-slate-800 focus:outline-none"
+        />
+        <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase select-none">
+          <span>Tersimpan Otomatis Terkait Sidang Kertas</span>
+          <button
+            onClick={() => {
+              showToast("💾 Catatan kendali mutu berhasil disimpan!");
+            }}
+            className="text-blue-600 hover:text-blue-800 font-black"
+          >
+            Simpan Catatan
+          </button>
+        </div>
+      </div>
+
+    </div>
+  );
 };

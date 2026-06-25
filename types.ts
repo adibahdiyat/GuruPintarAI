@@ -1,757 +1,750 @@
-import React, { useState, useEffect } from "react";
-import { 
-  Sparkles, 
-  CheckCircle, 
-  HelpCircle, 
-  ChevronDown, 
-  ChevronUp, 
-  ArrowRight, 
-  MessageSquare,
-  Award,
-  Users,
-  Calendar,
-  BookOpen,
-  Clipboard,
-  Info,
-  Bug,
-  Lightbulb,
-  Heart,
-  Eye,
-  EyeOff
-} from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useState } from "react";
+import { Copy, Check, Sparkles, BookOpen, Presentation, Video, Wrench, FileText, Image } from "lucide-react";
+import { PptInteractiveVisualSlide, SaranYoutubeSpesifik } from "../types";
 
-interface BetaGuideViewProps {
-  profileName: string;
-  profileSchool: string;
-  profileNip: string;
-  loginEmail: string;
-  storedFeedbacks: any[];
-  setStoredFeedbacks: (feedbacks: any[]) => void;
-  showToast: (msg: string) => void;
-  setCurrentScreen: (screen: any) => void;
-  playSfx: (type: string) => void;
-  teacherApiKey: string;
-  setTeacherApiKey: (key: string) => void;
+export interface MediaAlatPeraga {
+  mediaUtama: string[];
+  alatBahanKonkret: string[];
 }
 
-export default function BetaGuideView({
-  profileName,
-  profileSchool,
-  profileNip,
-  loginEmail,
-  storedFeedbacks,
-  setStoredFeedbacks,
-  showToast,
-  setCurrentScreen,
-  playSfx,
-  teacherApiKey,
-  setTeacherApiKey
-}: BetaGuideViewProps) {
-  // FAQ accordion state
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+export const getMediaAlatPeraga = (subject: string, manualSubject: string, materialText: string): MediaAlatPeraga => {
+  const normSubject = (subject || "").toLowerCase();
+  const normManual = (manualSubject || "").toLowerCase();
+  const text = (materialText || "").toLowerCase();
 
-  // Alur checklist state
-  const [checklist, setChecklist] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem("gp_beta_checklist");
-      return saved ? JSON.parse(saved) : {
-        profil: false,
-        kelas: false,
-        rpp: false,
-        absensi: false,
-        nilai: false
-      };
-    } catch {
-      return {
-        profil: false,
-        kelas: false,
-        rpp: false,
-        absensi: false,
-        nilai: false
-      };
-    }
-  });
-
-  // Local feedback fields
-  const [category, setCategory] = useState<"bug" | "idea" | "love">("idea");
-  const [feedbackText, setFeedbackText] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [isSent, setIsSent] = useState(false);
-
-  // Local state for API Key input before submitting/saving
-  const [tempKey, setTempKey] = useState(teacherApiKey || "");
-  const [showSavedAnimation, setShowSavedAnimation] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-
-  // Sync tempKey with teacherApiKey if prop changes
-  useEffect(() => {
-    setTempKey(teacherApiKey || "");
-  }, [teacherApiKey]);
-
-  // Filter feedbacks for this user-level
-  const myFeedbacks = storedFeedbacks.filter(f => f.user === (profileName || "Guru Anonim"));
-
-  // Save checklist helper
-  const toggleChecklist = (key: string) => {
-    const updated = { ...checklist, [key]: !checklist[key] };
-    setChecklist(updated);
-    try {
-      localStorage.setItem("gp_beta_checklist", JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    playSfx("click");
-    
-    // Count completed task
-    const total = Object.values(updated).filter(Boolean).length;
-    if (total === 5 && !checklist[key]) {
-      playSfx("success");
-      showToast("🏆 Luar biasa! Anda telah menyelesaikan seluruh latihan alur uji coba beta!");
-    }
+  const getCleanSubjectName = () => {
+    const active = (subject === "Input Mapel Manual (Ketik Sendiri)" && manualSubject) ? manualSubject : subject;
+    return active || "Mata Pelajaran";
   };
 
-  const submitFeedback = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!feedbackText.trim() || isSending) return;
-
-    setIsSending(true);
-    playSfx("click");
-
-    const feedbackTypeLabel = category === "bug" ? "Laporan Bug" : category === "idea" ? "Saran Fitur" : "Pujian / Masukan";
-
-    const newFeedback = {
-      id: Date.now(),
-      type: feedbackTypeLabel,
-      text: feedbackText.trim(),
-      timestamp: new Date().toISOString(),
-      user: profileName || "Guru Anonim"
+  // 1. Agama / Qur'an / Hadits / Fiqih / Tahfidz / BTQ / Tahsin
+  if (
+    normSubject.includes("agama") ||
+    normSubject.includes("alqur") ||
+    normSubject.includes("hadits") ||
+    normSubject.includes("fiqih") ||
+    normSubject.includes("tahfidz") ||
+    normSubject.includes("tahsin") ||
+    normSubject.includes("btq") ||
+    normSubject.includes("aqidah") ||
+    normSubject.includes("arab") ||
+    normManual.includes("agama") ||
+    normManual.includes("alqur") ||
+    normManual.includes("hadits") ||
+    normManual.includes("fiqih") ||
+    normManual.includes("tahfidz") ||
+    normManual.includes("tahsin") ||
+    normManual.includes("btq") ||
+    normManual.includes("aqidah") ||
+    normManual.includes("arab") ||
+    text.includes("makharijul") ||
+    text.includes("tajwid") ||
+    text.includes("hafal") ||
+    text.includes("wudhu") ||
+    text.includes("thaharah") ||
+    text.includes("sholat") ||
+    text.includes("hijrah") ||
+    text.includes("alqur")
+  ) {
+    return {
+      mediaUtama: [
+        "Slide Presentasi Kaligrafi & Makna Ayat/Hadits (Digital)",
+        "Video Animasi Kisah Keteladanan / Prosedur Ibadah (Digital)",
+        "Flashcard Tajwid / Puzzle Potongan Ayat & Surah (Fisik)"
+      ],
+      alatBahanKonkret: [
+        "Kit peraga mini (peta arah, kompas kiblat, lembaran Juz Amma)",
+        "Buku jurnal hafalan & kartu setoran (tasmi') harian kelompok",
+        "Spidol & sticky notes berwarna untuk menulis hikmah"
+      ]
     };
+  }
 
-    const updated = [newFeedback, ...storedFeedbacks];
-    setStoredFeedbacks(updated);
-    try {
-      localStorage.setItem("grup_feedback_list", JSON.stringify(updated));
-    } catch (err) {
-      console.error(err);
-    }
+  // 2. Matematika / Berhitung
+  if (
+    normSubject.includes("matematika") || 
+    normManual.includes("matematika") ||
+    normSubject.includes("hitung") || 
+    normManual.includes("hitung") ||
+    text.includes("matematika") ||
+    text.includes("hitung") ||
+    text.includes("angka") ||
+    text.includes("pecahan") ||
+    text.includes("aljabar") ||
+    text.includes("geometri")
+  ) {
+    return {
+      mediaUtama: [
+        "Aplikasi Interaktif 'GeoGebra' & 'Mathigon' (Digital)",
+        "Slide Animasi Matematika Kreatif GuruPintar (Digital)",
+        "Alat Peraga Blok Pecahan & Kartu Angka (Fisik)"
+      ],
+      alatBahanKonkret: [
+        "Kertas origami berwarna cerah",
+        "Gunting & lem kertas kelompok",
+        "Spidol papan tulis warna & penggaris panjang"
+      ]
+    };
+  }
 
-    try {
-      const response = await fetch("https://formsubmit.co/ajax/721d28a4e2f9b2e2b97046cc62e2c637", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({
-          name: profileName || "Guru Anonim",
-          email: loginEmail || "guru-anonim@email.com",
-          category: feedbackTypeLabel,
-          message: feedbackText.trim(),
-          school: profileSchool || "-",
-          nip: profileNip || "-",
-          _subject: `[GuruPintar.AI Beta Feedback] ${feedbackTypeLabel} dari ${profileName || "Guru Anonim"}`,
-          _replyto: loginEmail || "adibahdiyat98@gmail.com",
-          _captcha: "false"
-        })
-      });
+  // 3. IPAS / IPA / Sains / Biologi / Fisika / Kimia
+  if (
+    normSubject.includes("ipas") ||
+    normSubject.includes("ipa") ||
+    normSubject.includes("biologi") ||
+    normSubject.includes("fisika") ||
+    normSubject.includes("kimia") ||
+    normManual.includes("ipas") ||
+    normManual.includes("ipa") ||
+    normManual.includes("sains") ||
+    normManual.includes("fotosintesis") ||
+    text.includes("fotosintesis") ||
+    text.includes("daun") ||
+    text.includes("klorofil") ||
+    text.includes("ekosistem") ||
+    text.includes("sains") ||
+    text.includes("biologi") ||
+    text.includes("fisika") ||
+    text.includes("kimia") ||
+    text.includes("ipa") ||
+    text.includes("ipas") ||
+    text.includes("gravitasi") ||
+    text.includes("mitosis") ||
+    text.includes("sel") ||
+    text.includes("newton") ||
+    text.includes("energi")
+  ) {
+    return {
+      mediaUtama: [
+        "Video Ekosistem / Animasi 3D Proses Sains (Digital)",
+        "Gambar Poster Siklus Hidup / Organ Tubuh HD (Fisik)",
+        "Aplikasi Interaktif 'PhET Interactive Simulations' (Digital)"
+      ],
+      alatBahanKonkret: [
+        "Gelas kimia transparan / botol kaca bekas wadah",
+        "Helaian daun segar, air bersih, & pewarna makanan",
+        "Senter saku, lup (kaca pembesar), & LKPD Eksperimen"
+      ]
+    };
+  }
 
-      if (response.ok) {
-        showToast("💌 Masukan Anda berhasil terkirim langsung ke email pengembang!");
-      } else {
-        showToast("✓ Berhasil menyimpan masukan Anda secara luring.");
-      }
-    } catch (err) {
-      console.error("Error sending feedback:", err);
-      showToast("✓ Berhasil menyimpan masukan secara luring di perangkat.");
-    } finally {
-      setIsSending(false);
-      setFeedbackText("");
-      setIsSent(true);
-      playSfx("success");
-    }
+  // 4. Bahasa Indonesia / Inggris
+  if (
+    normSubject.includes("bahasa") ||
+    normSubject.includes("inggris") ||
+    normManual.includes("bahasa") ||
+    normManual.includes("english") ||
+    text.includes("bahasa") ||
+    text.includes("paragraf") ||
+    text.includes("kosakata") ||
+    text.includes("kalimat efektif") ||
+    text.includes("membaca teks")
+  ) {
+    return {
+      mediaUtama: [
+        "Flashcard Kosakata Bergambar Tema Terkait (Fisik)",
+        "Video Animasi Cerita Pendek / Roleplay Interaktif (Digital)",
+        "Audio Pembacaan Teks / Pronunciation Guide (Digital)"
+      ],
+      alatBahanKonkret: [
+        "Papan flanel / papan tulis mini & sticky notes",
+        "Kartu huruf / kata berpasangan untuk game",
+        "Lembar Kerja Siswa (LKPD) mandiri & pulpen"
+      ]
+    };
+  }
+
+  // 5. IPS / Pancasila / Sejarah / Geografi / Ekonomi / PPKn
+  if (
+    normSubject.includes("pancasila") ||
+    normSubject.includes("ppkn") ||
+    normSubject.includes("sejarah") ||
+    normSubject.includes("ips") ||
+    normSubject.includes("sosiologi") ||
+    normSubject.includes("geografi") ||
+    normSubject.includes("ekonomi") ||
+    normManual.includes("ekonomi") ||
+    normManual.includes("ips") ||
+    normManual.includes("sejarah") ||
+    text.includes("sejarah") ||
+    text.includes("ekonomi") ||
+    text.includes("pancasila") ||
+    text.includes("inflasi") ||
+    text.includes("devisa") ||
+    text.includes("negara") ||
+    text.includes("karakter")
+  ) {
+    return {
+      mediaUtama: [
+        "Peta Dunia / Globe Fisik & Peta Tematik Regional (Fisik)",
+        "Video Animasi Sejarah / Nilai Karakter Pancasila (Digital)",
+        "Ensiklopedia Studi Kasus & Gambar Tokoh Sejarah (Fisik)"
+      ],
+      alatBahanKonkret: [
+        "Kertas karton manila putih besar untuk mading",
+        "Gunting karton & lem perekat kelompok",
+        "Spidol warna-warni & kartu pos studi kasus"
+      ]
+    };
+  }
+
+  // 6. PJOK / Penjas / Olahraga / Kesehatan
+  if (
+    normSubject.includes("pjok") ||
+    normSubject.includes("penjas") ||
+    normSubject.includes("olahraga") ||
+    normSubject.includes("kesehatan") ||
+    normManual.includes("pjok") ||
+    normManual.includes("penjas") ||
+    normManual.includes("olahraga") ||
+    text.includes("gerak") ||
+    text.includes("senam") ||
+    text.includes("otot") ||
+    text.includes("jasmani")
+  ) {
+    return {
+      mediaUtama: [
+        "Video Instruksional Peragaan Gerak Dasar & Ketangkasan (Digital)",
+        "Poster Bagan Struktur Anatomi / Otot Pemicu Gerak (Fisik)",
+        "Aplikasi Pengukur Detak Jantung & Stopwatch Digital (Digital)"
+      ],
+      alatBahanKonkret: [
+        "Corong penanda (cones), peluit, & meteran lapangan",
+        "Matras senam / tali lompat skipping / bola pendukung",
+        "Lembar ceklis ketercapaian gerak & hidrasi harian kelompok"
+      ]
+    };
+  }
+
+  // 7. Informatika / Komputer / TIK / Prakarya Rekayasa
+  if (
+    normSubject.includes("informatika") ||
+    normSubject.includes("komputer") ||
+    normSubject.includes("tik") ||
+    normManual.includes("informatika") ||
+    normManual.includes("komputer") ||
+    text.includes("algoritma") ||
+    text.includes("pemrograman") ||
+    text.includes("scratch") ||
+    text.includes("digital") ||
+    text.includes("jaringan")
+  ) {
+    return {
+      mediaUtama: [
+        "Aplikasi Simulator Logika / Scratch Visual Programming (Digital)",
+        "Slide Struktur Jaringan & Keamanan Data Informatika (Digital)",
+        "Peta Alir (Flowchart) Logika Instruksi Algoritmik (Fisik)"
+      ],
+      alatBahanKonkret: [
+        "Komputer / Laptop Lab sekolah / Gadget kolaboratif",
+        "Peralatan mockup antarmuka: sticky notes & kertas plano",
+        "Kartu biner / game logika berpikir komputasional unplugged"
+      ]
+    };
+  }
+
+  // 8. Seni / Prakarya / PKWU / Kerajinan
+  if (
+    normSubject.includes("seni") ||
+    normSubject.includes("prakarya") ||
+    normSubject.includes("pkwu") ||
+    text.includes("seni rupa") ||
+    text.includes("kriya") ||
+    text.includes("menggambar")
+  ) {
+    return {
+      mediaUtama: [
+        "Video Tutorial Langkah Pembuatan Karya Kriya (Digital)",
+        "Contoh Produk Karya Jadi Hasil Kreativitas (Fisik)",
+        "Slide Inspirasi Palet Warna & Desain Seni (Digital)"
+      ],
+      alatBahanKonkret: [
+        "Bahan utama berkarya (kertas krep, tanah liat/clay, botol plastik)",
+        "Peralatan mewarnai (cat air, krayon, kuas)",
+        "Gunting, lem serbaguna, & alas koran/plastik meja"
+      ]
+    };
+  }
+
+  // 9. Adaptive Fallback for any other subjects (Tata Busana, Bahasa Daerah, Geologi, etc.)
+  return {
+    mediaUtama: [
+      `Video Pembelajaran Visual & Simulasi Interaktif ${getCleanSubjectName()} (Digital)`,
+      `Poster Diagram Infografis Alur Inti tentang ${getCleanSubjectName()} (Fisik)`,
+      "Slide Presentasi Kreatif GuruPintar Kurikulum Merdeka (Digital)"
+    ],
+    alatBahanKonkret: [
+      "Kertas plano / karton manila untuk pameran hasil galeri ajar",
+      "Spidol warna-warni berujung tebal & lem perekat kuat",
+      `Lembar Kerja Siswa (LKPD) kelompok studi ${getCleanSubjectName()}`
+    ]
   };
+};
 
-  const handleSaveApiKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = tempKey.trim();
-    if (!trimmed) {
-      showToast("⚠️ Harap masukkan API Key terlebih dahulu.");
-      return;
-    }
-    
-    setTeacherApiKey(trimmed);
-    setShowSavedAnimation(true);
-    playSfx("success");
-    showToast("💾 Sukses! API Key Gemini tersimpan kokoh di browser Anda.");
-    
-    setTimeout(() => {
-      setShowSavedAnimation(false);
-    }, 4500);
-  };
+export const getInfographicPrompt = (subject: string, manualSubject: string, materialText: string): string => {
+  const normSubject = (subject || "").toLowerCase();
+  const normManual = (manualSubject || "").toLowerCase();
+  const text = (materialText || "").toLowerCase();
 
-  const faqData = [
-    {
-      q: "Apa itu Program Beta Tester GuruPintar.AI?",
-      a: "Program Beta Tester ini dicanangkan khusus untuk para guru dan pendidik di Indonesia demi menguji coba fungsionalitas pembuatan perangkat pembelajaran Kurikulum Merdeka berbasis kecerdasan buatan (offline-first & online sync) sebelum dilakukan perilisan penuh ke publik."
-    },
-    {
-      q: "Bagaimana cara AI membantu saya membuat Perangkat Ajar?",
-      a: "Cukup masuk ke tab 'Buat Perangkat Ajar', pilih tingkat kelas, mata pelajaran, dan tulis topik materi yang Anda ajarkan. Sistem AI kami akan menjabarkan secara terperinci Tujuan Pembelajaran (TP), Alur Tujuan Pembelajaran (ATP), Modul Ajar, hingga rubrik asesmen secara dinamis sesuai kaidah kurikulum resmi."
-    },
-    {
-      q: "Apakah data siswa yang saya masukkan aman?",
-      a: "Sangat aman. Seluruh data siswa, catatan nilai, kehadiran siswa, dan dokumen ajar Anda disimpan secara offline menggunakan penyimpanan browser lokal (localStorage). Data tidak disebarluaskan dan tidak diproses untuk keperluan komersial apa pun."
-    },
-    {
-      q: "Bagaimana cara mencetak / mengekspor RPP ke Microsoft Word?",
-      a: "Setelah AI selesai merumuskan perangkat ajar, klik tombol 'Unduh Word (.docx)' di panel preview. Berkas instan akan otomatis terunduh lengkap dengan format tabel, penomoran, dan tata letak dokumen formal siap cetak."
-    }
+  // Deteksi apakah mapel Islam/agama
+  const isIslamic =
+    normSubject.includes("islam") || normSubject.includes("agama") ||
+    normSubject.includes("tahfidz") || normSubject.includes("tahsin") ||
+    normSubject.includes("fiqih") || normSubject.includes("akidah") ||
+    normSubject.includes("akhlak") || normSubject.includes("btq") ||
+    normSubject.includes("pai") || normSubject.includes("alqur") ||
+    normManual.includes("islam") || normManual.includes("agama") ||
+    normManual.includes("tahfidz") || normManual.includes("fiqih") ||
+    normManual.includes("btq") || normManual.includes("pai") ||
+    text.includes("allah") || text.includes("rasulullah") ||
+    text.includes("nabi") || text.includes("alquran") ||
+    text.includes("sholat") || text.includes("wudhu") ||
+    text.includes("tajwid") || text.includes("hijrah") ||
+    text.includes("makkah") || text.includes("madinah");
+
+  // Ambil topik utama dari materi
+  let topic = "educational learning concept";
+  if (materialText?.trim()) {
+    const sentences = materialText.split(/[.!?\n]/).filter(s => s.trim().length > 3);
+    const firstSentence = sentences[0] || materialText;
+    topic = firstSentence.split(/\s+/).slice(0, 7).join(" ").replace(/[,;:.]$/, "");
+  }
+
+  // Daftar game viral untuk karakter (dipilih acak)
+  const gameStyles = [
+    "Roblox blocky cartoon characters",
+    "Mobile Legends Bang Bang cartoon hero characters",
+    "Free Fire (Garena) cartoon squad characters",
+    "Minecraft blocky pixel art characters",
+    "Among Us cartoon crewmate characters",
+    "Genshin Impact cartoon anime characters",
   ];
+  const randomGame = gameStyles[Math.floor(Math.random() * gameStyles.length)];
+
+  // Bangun prompt sesuai konteks
+  if (isIslamic) {
+    return `High-quality educational infographic illustration in clean cartoon style, depicting '${topic}', featuring friendly Muslim student characters: girls wearing proper hijab covering their aurat (headscarf, long sleeves, modest clothing), boys wearing Islamic cap (peci) and long-sleeved shirts, all wearing cheerful school expressions, respectful and clean visual style with no inappropriate elements, background adorned with beautiful minimal Islamic geometric patterns and soft pastel mosque silhouette, educational diagram with clear Indonesian labels and numbered steps, vibrant colors, professional layout suitable for school classroom wall poster, child-friendly`;
+  }
+
+  // Mapel sains
+  if (normSubject.includes("ipa") || normSubject.includes("ipas") ||
+      normSubject.includes("biologi") || normSubject.includes("fisika") ||
+      normSubject.includes("kimia") || normManual.includes("sains")) {
+    return `Vibrant 3D educational science infographic, cartoon style inspired by ${randomGame} aesthetic, depicting '${topic}', student characters wearing mini lab coats exploring with magnifying glasses, bright laboratory backdrop with floating molecules and atom diagrams, clean Indonesian educational labels with arrows and numbered steps, high-detail, school-safe, child-friendly, poster quality`;
+  }
+
+  // Matematika
+  if (normSubject.includes("matematika") || normManual.includes("matematika")) {
+    return `Fun colorful math educational infographic, cartoon style inspired by ${randomGame} aesthetic, depicting '${topic}', cute student characters playing with giant 3D numbers and geometric shapes, isometric grid background with floating math operators (+, -, ×, ÷), clean Indonesian labels, step-by-step problem breakdown, bright cheerful colors, child-friendly, school-safe poster quality`;
+  }
+
+  // IPS / Sejarah / Geografi
+  if (normSubject.includes("ips") || normSubject.includes("sejarah") ||
+      normSubject.includes("geografi") || normManual.includes("sejarah")) {
+    return `Beautiful educational history and social studies infographic, cartoon style inspired by ${randomGame} aesthetic, depicting '${topic}', curious explorer student characters with backpacks and notebooks, colorful illustrated map background with timeline elements, Indonesian educational labels, warm vintage color palette mixed with modern cartoon style, child-friendly, school-safe, poster quality`;
+  }
+
+  // PJOK
+  if (normSubject.includes("pjok") || normSubject.includes("penjas") ||
+      normSubject.includes("olahraga")) {
+    return `Dynamic sports educational infographic, energetic cartoon style inspired by ${randomGame} aesthetic, depicting '${topic}', active student characters in school sports uniform demonstrating movement steps, outdoor stadium background with motion lines, bold Indonesian labels with numbered movement sequence, bright energetic colors, child-friendly, school-safe, poster quality`;
+  }
+
+  // Bahasa Indonesia / Inggris
+  if (normSubject.includes("bahasa") || normManual.includes("bahasa")) {
+    return `Creative language learning educational infographic, colorful cartoon style inspired by ${randomGame} aesthetic, depicting '${topic}', student characters reading giant floating books and speech bubbles, library and classroom background, Indonesian educational labels with grammar structure diagrams, pastel color scheme, child-friendly, school-safe, poster quality`;
+  }
+
+  // Default — semua mapel lainnya
+  return `High-quality educational infographic illustration, vibrant cartoon style inspired by ${randomGame} aesthetic but school-appropriate, depicting '${topic}', cheerful Indonesian student characters in school uniform exploring and learning, colorful educational classroom background, clear Indonesian labels with arrows and steps, bright colors, detailed, child-friendly, school-safe, suitable for classroom wall poster`;
+};
+
+interface MediaBelajarViewProps {
+  youtubeSaran: SaranYoutubeSpesifik;
+  slides?: PptInteractiveVisualSlide[];
+  subject: string;
+  classLevel: string;
+  showToast: (msg: string) => void;
+  profileName?: string;
+  profileSchool?: string;
+  manualSubject?: string;
+  materialText?: string;
+}
+
+export const MediaBelajarView: React.FC<MediaBelajarViewProps> = ({
+  youtubeSaran,
+  slides = [],
+  subject,
+  classLevel,
+  showToast,
+  profileName = "",
+  profileSchool = "",
+  manualSubject = "",
+  materialText = "",
+}) => {
+  const [copiedAll, setCopiedAll] = useState<boolean>(false);
+  const [copiedPrompt, setCopiedPrompt] = useState<boolean>(false);
+
+  const displaySubject = subject === "Input Mapel Manual (Ketik Sendiri)" && manualSubject ? manualSubject : subject;
+  const author = profileName ? `${profileName} (${profileSchool || "GuruPintar AI"})` : "GuruPintar AI";
+  const promptInfografis = getInfographicPrompt(subject, manualSubject, materialText);
+
+  const getCanvaAIText = (): string => {
+    // Jika sudah ada slide dari AI generate, tampilkan slide itu
+    if (slides && slides.length >= 10) {
+      let result = "";
+      slides.forEach((slide) => {
+        result += `[Slide ${slide.slide_nomor}: ${slide.judul_halaman}]\n`;
+        (slide.isi_poin_materi || []).forEach((p: string) => {
+          result += p.trim().startsWith("•") || p.trim().startsWith("-") ? `${p}\n` : `• ${p}\n`;
+        });
+        if (slide.image_generation_prompt) {
+          result += `🎨 Visual: ${slide.image_generation_prompt}\n`;
+        }
+        result += "\n";
+      });
+      return result;
+    }
+
+    // Template default minimal 12 slide, mendalam dan terhubung ke materi aktif
+    const topikUtama = materialText?.trim()
+      ? materialText.split(/[.!\n]/)[0].trim().slice(0, 60)
+      : displaySubject;
+
+    const isAgama = (subject || "").toLowerCase().includes("agama") ||
+      (subject || "").toLowerCase().includes("pai") ||
+      (manualSubject || "").toLowerCase().includes("agama") ||
+      (materialText || "").toLowerCase().includes("allah") ||
+      (materialText || "").toLowerCase().includes("sholat");
+
+    const openingVerse = isAgama
+      ? `• بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم\n• "Dan Kami turunkan dari Al-Qur'an sesuatu yang menjadi penawar dan rahmat bagi orang-orang yang beriman." (QS. Al-Isra: 82)`
+      : `• "Ilmu adalah cahaya yang menerangi jalan kehidupan." — Pepatah\n• "Pendidikan bukan persiapan untuk hidup; pendidikan adalah hidup itu sendiri." — John Dewey`;
+
+    return `[Slide 1: Halaman Judul]
+• ${topikUtama.toUpperCase()}
+• Mata Pelajaran: ${displaySubject} | ${classLevel}
+• Disusun oleh: ${author}
+${isAgama ? "• بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم" : ""}
+
+[Slide 2: Pembuka & Motivasi Belajar]
+${openingVerse}
+• Tujuan Pembelajaran: Memahami konsep ${topikUtama} secara mendalam dan bermakna
+• Manfaat: Mengapa materi ini penting dalam kehidupan sehari-hari?
+
+[Slide 3: Pertanyaan Pemantik]
+• ❓ Pernahkah kalian melihat atau merasakan ${topikUtama} dalam kehidupan sehari-hari?
+• ❓ Apa yang kalian ketahui tentang topik ini sebelumnya?
+• ❓ Bagaimana hubungan ${topikUtama} dengan hal-hal di sekitar kalian?
+• 💭 Tuliskan jawabanmu di sticky note — kita akan bahas bersama!
+
+[Slide 4: Konsep Dasar & Pengertian]
+• 📖 Definisi: Penjelasan konsep utama ${topikUtama} menurut para ahli
+• 🔑 Kata kunci yang wajib dipahami: [3-5 istilah penting]
+• 📊 Diagram/bagan konsep dasar
+• ✍️ Catatan: Salin definisi ke buku catatanmu!
+
+[Slide 5: Bagian Inti A — Komponen / Jenis / Klasifikasi]
+• 🗂️ Pengelompokan utama dalam ${topikUtama}
+• Kelompok 1: [nama + penjelasan singkat]
+• Kelompok 2: [nama + penjelasan singkat]
+• Kelompok 3: [nama + penjelasan singkat]
+• 🖼️ Gambar / diagram ilustrasi pendukung
+
+[Slide 6: Bagian Inti B — Proses / Cara Kerja / Langkah-langkah]
+• ⚙️ Bagaimana ${topikUtama} bekerja / terjadi / dilakukan?
+• Langkah 1 → Langkah 2 → Langkah 3 → Langkah 4
+• 🔄 Diagram alur proses (flowchart)
+• ⚠️ Hal penting yang perlu diperhatikan
+
+[Slide 7: Bagian Inti C — Hubungan & Pengaruh]
+• 🔗 Keterkaitan ${topikUtama} dengan konsep lain yang sudah dipelajari
+• Sebab → Akibat dalam ${topikUtama}
+• 📈 Dampak positif | 📉 Dampak negatif (jika ada)
+• 🌍 Contoh nyata di lingkungan sekitar kita
+
+[Slide 8: Pendalaman — Studi Kasus / Contoh Konkret]
+• 📋 Contoh Kasus 1: [deskripsi situasi nyata]
+• 📋 Contoh Kasus 2: [deskripsi konteks berbeda]
+• 🔍 Analisis: Apa yang bisa kita pelajari dari contoh ini?
+• 💡 Hubungkan dengan pengalaman hidupmu sendiri!
+
+[Slide 9: Kegiatan Kelompok — Eksplorasi Bersama]
+• 👥 Bentuk kelompok 4-5 orang
+• 📌 Tugas Kelompok: Diskusikan dan buat bagan/peta konsep ${topikUtama}
+• 🎯 Pertanyaan diskusi:
+  1. Apa bagian yang paling menarik dari ${topikUtama}?
+  2. Bagaimana penerapannya dalam kehidupan sehari-hari?
+  3. Apa pertanyaan yang masih belum terjawab?
+• ⏱️ Waktu: 15 menit — siapkan presentasi singkat!
+
+[Slide 10: Presentasi Hasil Kelompok]
+• 🎤 Setiap kelompok memaparkan temuan selama 3 menit
+• 👂 Kelompok lain menyimak dan menyiapkan 1 pertanyaan
+• 📝 Guru mencatat poin-poin penting di papan tulis
+• ⭐ Apresiasi: "Semua jawaban adalah proses belajar yang berharga!"
+
+[Slide 11: Kuis Interaktif — Cek Pemahaman]
+• 🎯 Soal 1: [pertanyaan pilihan ganda tentang ${topikUtama}]
+• 🎯 Soal 2: [pertanyaan tentang proses/langkah]
+• 🎯 Soal 3: [soal aplikasi kehidupan nyata]
+• 🏆 Siapa yang bisa menjawab semua dengan benar?
+
+[Slide 12: Kesimpulan & Refleksi Belajar]
+• 📌 Rangkuman: 3 poin utama yang dipelajari hari ini
+  1. [poin 1 tentang ${topikUtama}]
+  2. [poin 2 — proses/cara kerja]
+  3. [poin 3 — penerapan nyata]
+• 💭 Refleksi: Apa 1 hal baru yang kamu pelajari hari ini?
+• 📚 Tugas Rumah: Cari 1 contoh ${topikUtama} di sekitar rumahmu — foto/gambar dan ceritakan besok!
+• 🙏 ${isAgama ? "الحَمْدُ لِلَّهِ — Alhamdulillah, semoga ilmu ini bermanfaat dunia dan akhirat!" : "Terima kasih sudah belajar dengan semangat hari ini! 🌟"}
+`;
+  };
+
+  // Combine input texts with the actual generated YouTube keyword and slide titles to guarantee 
+  // that the suggestions list always adapts to newly generated or loaded RPP materials.
+  const activeSubject = subject || "";
+  const activeManual = manualSubject || "";
+  const activeText = `${materialText || ""} ${youtubeSaran?.keyword_pencarian_utama || ""} ${slides?.map(s => s.judul_halaman).join(" ") || ""}`;
+
+  const mediaPeraga = getMediaAlatPeraga(activeSubject, activeManual, activeText);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6 max-w-4xl mx-auto text-left pb-24"
-    >
-      {/* 🔮 ELEGANT GRADIENT HEADER CARD */}
-      <div className="bg-gradient-to-r from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] text-white p-8 rounded-3xl relative overflow-hidden shadow-[0_12px_45px_rgba(30,58,138,0.2)] border border-white/10">
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-        <div className="absolute -bottom-16 -left-10 w-48 h-48 bg-sky-200/10 rounded-full blur-3xl pointer-events-none"></div>
-        
-        <div className="relative z-10 space-y-2">
-          <span className="bg-white/20 backdrop-blur-md px-3.5 py-1 rounded-full text-[10px] font-black tracking-widest uppercase text-sky-100 inline-flex items-center gap-1.5 border border-white/15">
-            <Sparkles className="w-3 h-3 text-amber-300" /> PROGRAM BETA TESTER GP.AI
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-black font-display tracking-tight leading-tight">
-            Panduan &amp; Tutorial Penggunaan Fitur Beta
-          </h1>
-          <p className="text-xs sm:text-sm text-blue-100 font-medium max-w-2xl">
-            Selamat datang pendidik hebat tanah air! Panduan ini dirancang untuk memperkenalkan secara komprehensif seluruh ekosistem canggih GuruPintar.AI.
-          </p>
+    <div className="space-y-10 md:space-y-12">
+      
+      {/* SECTION 1: DAFTAR MEDIA & ALAT PERAGA INTI */}
+      <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center gap-2 select-none border-b border-slate-100 pb-3">
+          <Wrench className="w-5 h-5 text-indigo-600" />
+          <h4 className="text-sm font-extrabold text-[#0D1D34] font-display uppercase tracking-wide">
+            Daftar Media &amp; Alat Peraga Inti RPP
+          </h4>
+        </div>
+
+        <div className="text-[11.5px] leading-relaxed text-slate-700">
+          Untuk mewujudkan pembelajaran bermakna (meaningful learning) di era Kurikulum Merdeka, berikut adalah klasifikasi media ajar dan peranti fisik nyata untuk memandu jalannya kolaborasi kelompok siswa di kelas:
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2.5">
+            <span className="text-[10px] text-indigo-800 font-extrabold block uppercase tracking-wide font-mono">
+              📢 Media Utama (Fisik / Digital):
+            </span>
+            <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-800 font-medium font-sans">
+              {mediaPeraga.mediaUtama.map((m, i) => (
+                <li key={i} className="leading-relaxed">{m}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-2.5">
+            <span className="text-[10px] text-emerald-800 font-extrabold block uppercase tracking-wide font-mono">
+              🛠️ Alat &amp; Bahan Kelas Konkret (Kegiatan Kelompok):
+            </span>
+            <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-800 font-medium font-sans">
+              {mediaPeraga.alatBahanKonkret.map((ab, i) => (
+                <li key={i} className="leading-relaxed">{ab}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
 
-      {/* 💡 WELCOME RECOGNITION BOX */}
-      <div className="bg-blue-50/60 border border-blue-200/50 p-6 rounded-2xl flex gap-4 items-start shadow-3xs">
-        <div className="p-3 bg-[#EBF3FF] text-[#1E3A8A] rounded-xl shrink-0">
-          <Award className="w-6 h-6 animate-pulse" />
-        </div>
-        <div className="space-y-1.5">
-          <h3 className="text-sm font-bold text-[#1E3A8A]">Apresiasi Penguji Beta Resmi</h3>
-          <p className="text-xs text-slate-750 font-medium leading-relaxed">
-            Terima kasih kepada <strong>{profileName || "Ibu/Bapak Guru Hebat"}</strong> dari <strong>{profileSchool || "Sekolah Mitra Beta"}</strong> karena telah bersedia berkontribusi untuk menyempurnakan platform ini. Tanggapan jujur dan temuan dari aktivitas mengajar Anda adalah kunci utama transformasi digital pendidikan kita.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        
-        {/* LEFT COLUMN: FEATURES & FAQ (md:col-span-7) */}
-        <div className="md:col-span-7 space-y-6">
-          
-          {/* FEATURE SUPERPOWERS SECTION */}
-          <div className="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-3xs">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <span>🌟</span> FUNGSI UNGGULAN UNTUK ANDA UJI COBA
-            </h3>
-            
-            <div className="space-y-3.5">
-              
-              {/* CARD 1: STUDIO DEVICE AI */}
-              <div className="flex gap-4 p-4 rounded-2xl bg-indigo-50/20 hover:bg-indigo-50/40 border border-slate-100 hover:border-indigo-100 transition group">
-                <div className="p-2.5 bg-indigo-50 text-indigo-700 rounded-xl shrink-0 h-11 w-11 flex items-center justify-center">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black text-slate-800 flex items-center gap-2">
-                    Studio RPP &amp; Modul Ajar AI
-                    <span className="text-[8px] bg-indigo-600 text-white font-extrabold px-1.5 py-0.5 rounded-full">POPULER</span>
-                  </h4>
-                  <p className="text-[11.5px] text-slate-500 font-medium leading-relaxed">
-                    Menghasilkan satu set dokumen RPP Kurikulum Merdeka secara modular hanya dengan menulis topik dasar pembelajaran. Mendukung ekspor format Microsoft Word (.docx).
-                  </p>
-                </div>
-              </div>
-
-              {/* CARD 2: ABSENSI OFFLINE */}
-              <div className="flex gap-4 p-4 rounded-2xl bg-emerald-50/20 hover:bg-emerald-50/40 border border-slate-100 hover:border-emerald-100 transition group">
-                <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-xl shrink-0 h-11 w-11 flex items-center justify-center">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black text-slate-800">
-                    Sistem Kehadiran &amp; Absensi Offline
-                  </h4>
-                  <p className="text-[11.5px] text-slate-500 font-medium leading-relaxed">
-                    Pengelolaan absensi harian kelas binaan tanpa butuh koneksi internet. Tersedia visual ringkasan tingkat kehadiran kumulatif dan dinamika siswa per bulan.
-                  </p>
-                </div>
-              </div>
-
-              {/* CARD 3: CATATAN SIKLUS NILAI */}
-              <div className="flex gap-4 p-4 rounded-2xl bg-amber-50/20 hover:bg-amber-50/40 border border-slate-100 hover:border-amber-100 transition group">
-                <div className="p-2.5 bg-amber-50 text-amber-700 rounded-xl shrink-0 h-11 w-11 flex items-center justify-center">
-                  <Clipboard className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black text-slate-800">
-                    Nilai Formatif &amp; Evaluasi Rapor
-                  </h4>
-                  <p className="text-[11.5px] text-slate-500 font-medium leading-relaxed">
-                    Rekam pencapaian materi, kepatuhan, sikap, dan buat rumusan perkembangan raport deskripsi otomatis untuk siswa Anda berdasarkan siklus nilai formatif.
-                  </p>
-                </div>
-              </div>
-
-              {/* CARD 4: CALENDAR SYNC */}
-              <div className="flex gap-4 p-4 rounded-2xl bg-purple-50/20 hover:bg-purple-50/40 border border-slate-100 hover:border-purple-100 transition group">
-                <div className="p-2.5 bg-purple-50 text-purple-700 rounded-xl shrink-0 h-11 w-11 flex items-center justify-center">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black text-slate-800">
-                    Sinkronisasi Guru Agenda
-                  </h4>
-                  <p className="text-[11.5px] text-slate-500 font-medium leading-relaxed">
-                    Rancang jadwal mengajar harian, mingguan, dan hubungkan draf rencana ke Google Calendar Anda secara mulus seketika.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* ACCORDION FAQ SECTION */}
-          <div className="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-3xs">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-[#1E3A8A]" /> PERTANYAAN UMUM GURU TESTER
-            </h3>
-
-            <div className="space-y-2.5">
-              {faqData.map((item, idx) => {
-                const isOpen = openFaq === idx;
-                return (
-                  <div key={idx} className="border border-slate-150 rounded-2xl overflow-hidden transition-colors">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenFaq(isOpen ? null : idx);
-                        playSfx("click");
-                      }}
-                      className="w-full flex items-center justify-between p-4 bg-slate-50/40 hover:bg-slate-50 text-left transition"
-                    >
-                      <span className="text-xs font-extrabold text-slate-800 shrink-0 select-none pr-3">
-                        {idx + 1}. {item.q}
-                      </span>
-                      {isOpen ? (
-                        <ChevronUp className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      )}
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: "auto" }}
-                          exit={{ height: 0 }}
-                          transition={{ duration: 0.18 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="p-4 border-t border-slate-150 bg-white text-[11px] text-slate-600 font-medium leading-relaxed">
-                            {item.a}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-        </div>
-
-        {/* RIGHT COLUMN: RECURRING TUTORIAL CHECKLIST & FEEDBACK (md:col-span-5) */}
-        <div className="md:col-span-5 space-y-6">
-          
-          {/* CHECKLIST TRAINING TRACKER */}
-          <div className="bg-gradient-to-b from-[#1F2937] to-[#111827] text-white p-5.5 rounded-3xl shadow-3xs">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2 border-b border-white/5 pb-2">
-              🎯 ALUR UJI COBA (CHECKLIST MANDIRI)
-            </h3>
-            <p className="text-[10px] text-slate-400 font-medium mb-4">
-              Coba lakukan 5 aktivitas wajib berikut untuk melatih pembiasaan alur navigasi aplikasi:
-            </p>
-
-            <div className="space-y-2.5">
-              {[
-                { key: "profil", icon: "👤", desc: "Mutakhirkan foto & biodata pribadi Anda di Profil Guru" },
-                { key: "kelas", icon: "🏫", desc: "Tambah kelas binaan baru (misal: 4A, 5B) di Beranda" },
-                { key: "rpp", icon: "✏️", desc: "Buat 1 RPP/Modul Ajar dari AI, periksa & klik unduh PDF/Word" },
-                { key: "absensi", icon: "✅", desc: "Isi data kehadiran 1-2 siswa baru di tab Kehadiran Siswa" },
-                { key: "nilai", icon: "📓", desc: "Beri feedback deskripsi, beri rating perilaku di Catatan Nilai" },
-              ].map((step) => {
-                const isChecked = checklist[step.key];
-                return (
-                  <button
-                    key={step.key}
-                    type="button"
-                    onClick={() => toggleChecklist(step.key)}
-                    className={`w-full flex items-start gap-3 p-3 rounded-2xl text-left border cursor-pointer transition ${
-                      isChecked 
-                        ? "bg-emerald-500/10 border-emerald-500/40 hover:bg-emerald-500/15" 
-                        : "bg-white/5 border-white/5 hover:bg-white/10"
-                    }`}
-                  >
-                    <span className="text-lg shrink-0 pt-0.5">{step.icon}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-[11px] font-bold leading-normal ${isChecked ? "text-emerald-300 line-through" : "text-slate-100"}`}>
-                        {step.desc}
-                      </p>
-                    </div>
-                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 ${
-                      isChecked ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-500"
-                    }`}>
-                      {isChecked && <CheckCircle className="w-3.5 h-3.5 fill-white text-emerald-500" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
-              <span className="text-[9.5px] font-black text-slate-400">Penyelesaian:</span>
-              <span className="text-[11px] font-black bg-[#EBF3FF] text-[#1E3A8A] px-2.5 py-0.5 rounded-full">
-                {Object.values(checklist).filter(Boolean).length} / 5 Langkah
-              </span>
-            </div>
-          </div>
-
-          {/* 🔑 DYNAMIC GEMINI API KEY CONFIGURATION BLOCK */}
-          <div className="bg-gradient-to-br from-[#0F172A] to-[#1E293B] text-white p-6 rounded-3xl border border-blue-500/30 shadow-xl space-y-5">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <div className="space-y-0.5">
-                <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                  🔑 KONFIGURASI API KEY GEMINI (WAJIB)
-                </h3>
-                <p className="text-[9.5px] text-slate-400 font-semibold uppercase">Prasyarat Kecerdasan Buatan (AI)</p>
-              </div>
-              {teacherApiKey ? (
-                <span className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[9px] font-black px-2.5 py-1 rounded-full animate-pulse select-none">
-                  ● AKTIF &amp; TERHUBUNG
-                </span>
-              ) : (
-                <span className="bg-red-500/20 border border-red-500/40 text-red-400 text-[9px] font-black px-2.5 py-1 rounded-full select-none animate-bounce">
-                  ● BELUM DIKONFIGURASI
-                </span>
-              )}
-            </div>
-
-            {/* CLEAR DETAILED EXPLANATION */}
-            <div className="space-y-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
-              <div className="space-y-1">
-                <h4 className="text-xs font-black text-slate-200">🔍 Apa itu API Key Gemini &amp; Kenapa dibutuhkan?</h4>
-                <p className="text-[11px] text-slate-350 leading-relaxed font-medium">
-                  <strong>API Key Gemini</strong> adalah jembatan penghubung rahasia antara perangkat Anda dengan server otak AI Google Gemini yang cerdas. Tanpa kunci ini, fitur AI kami tidak dapat diaktifkan.
-                </p>
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-xs font-black text-slate-200">⚙️ Untuk fungsi apa saja API Key dijalankan?</h4>
-                <ul className="text-[11px] text-slate-350 leading-relaxed pl-4 list-disc space-y-1 font-medium">
-                  <li><strong>Modul Ajar (RPP) AI:</strong> Menyusun modul ajar interaktif lengkap langkah demi langkah otomatis.</li>
-                  <li><strong>Kuis AI &amp; Soal Ujian:</strong> Menulis 20 PG, 10 isian singkat, dan 5 uraian lengkap dengan kunci jawaban instan.</li>
-                  <li><strong>LKPD Siswa:</strong> Merancang instrumen lembar kerja siswa dinamis.</li>
-                  <li><strong>Siklus Penilaian Raport:</strong> Memformulasikan deskripsi deskriptif perilaku murid otomatis.</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* STEP BY STEP TUTORIAL */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-slate-200">🛠️ Panduan Mendapatkan API Key Gratis:</h4>
-              <ol className="text-[10.5px] space-y-2 text-slate-350 list-decimal pl-4.5 font-medium leading-relaxed">
-                <li>
-                  Kunjungi konsol resmi Google AI: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 font-extrabold hover:underline">aistudio.google.com/apikey ↗</a>
-                </li>
-                <li>
-                  Masuk menggunakan Akun Google pribadi Anda (gratis selamanya, tidak memerlukan kartu kredit).
-                </li>
-                <li>
-                  Klik tombol biru dominan <strong className="text-white">"Create API Key"</strong> lalu salin kodenya.
-                </li>
-              </ol>
-            </div>
-
-            {/* INTERACTIVE INPUT & SAVE FORM */}
-            <form onSubmit={handleSaveApiKey} className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/5 relative">
-              
-              {/* SUCCESS ANIMATED OVERLAY ROW */}
-              <AnimatePresence>
-                {showSavedAnimation && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: -5 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="absolute inset-0 bg-slate-900/95 rounded-2xl flex flex-col items-center justify-center text-center p-4 z-20 space-y-1.5 border border-emerald-500/50"
-                  >
-                    <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center justify-center shrink-0">
-                      <CheckCircle className="w-6 h-6" />
-                    </div>
-                    <h4 className="text-xs font-extrabold text-emerald-300">API Key Berhasil Disimpan &amp; Diaktifkan!</h4>
-                    <p className="text-[10px] text-slate-300 max-w-xs font-medium leading-normal">
-                      Kini seluruh fitur pembuatan dokumen ajar otomatis dengan kecerdasan buatan siap Anda gunakan sepenuhnya.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <label className="text-[9.5px] font-black text-slate-300 block uppercase tracking-wider">
-                Tempel Kunci API Key Gemini Anda di sini:
-              </label>
-              
-              {/* Password visibility toggle container */}
-              <div className="relative">
-                <input
-                  type={showKey ? "text" : "password"}
-                  value={tempKey}
-                  onChange={(e) => {
-                    setTempKey(e.target.value);
-                  }}
-                  placeholder="Contoh: AIzaSyD..."
-                  className="bg-white/10 text-white placeholder-slate-500 font-mono text-xs p-3 pr-10 rounded-xl border border-white/10 hover:border-white/20 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 w-full outline-none transition-all font-semibold"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowKey(!showKey);
-                    playSfx("click");
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition p-1 cursor-pointer flex items-center justify-center"
-                  title={showKey ? "Sembunyikan Kunci" : "Tampilkan Kunci"}
-                >
-                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/[0.05]">
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                  <button
-                    type="submit"
-                    className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold px-4 py-2 rounded-xl transition duration-150 cursor-pointer flex items-center justify-center gap-1.5 shadow-md select-none"
-                  >
-                    <span>Simpan Key</span> 💾
-                  </button>
-
-                  {(teacherApiKey || tempKey) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTempKey("");
-                        setTeacherApiKey("");
-                        playSfx("click");
-                        showToast("🗑️ API Key berhasil dihapus dari sistem.");
-                      }}
-                      className="flex-1 sm:flex-none bg-red-950/40 hover:bg-red-900/40 active:scale-95 text-red-300 hover:text-red-200 border border-red-900/30 text-xs font-medium px-4 py-2 rounded-xl transition duration-150 cursor-pointer select-none"
-                      title="Hapus API Key"
-                    >
-                      Hapus
-                    </button>
-                  )}
-
-                  {tempKey.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const trimmed = tempKey.trim();
-                        if (trimmed.length > 15) {
-                          showToast("✅ Sip! Panjang karakter API Key memadai dan tampak valid.");
-                          playSfx("success");
-                        } else {
-                          showToast("⚠️ Peringatan: API Key terlalu pendek.");
-                          playSfx("success");
-                        }
-                      }}
-                      className="text-blue-400 hover:text-blue-300 text-xs font-bold hover:underline cursor-pointer py-2 px-1 select-none shrink-0"
-                    >
-                      Uji Format Key
-                    </button>
-                  )}
-                </div>
-
-                <div className="text-[10px] text-slate-400 font-medium select-none text-left sm:text-right">
-                  Penyimpanan: <strong className="text-slate-300">Browser Lokal (Aman)</strong>
-                </div>
-              </div>
-
-            </form>
-
-            {/* PRO-TIP ON GEMINI PRICING */}
-            <div className="bg-blue-950/40 border border-blue-900/60 p-3.5 rounded-xl flex gap-2.5 items-start">
-              <span className="text-sm shrink-0">💡</span>
-              <p className="text-[10px] text-blue-200 leading-normal font-semibold">
-                <strong>Informasi Biaya:</strong> Skema penggunaan API Key gratis dari Google AI Studio memberikan kuota pemuatan RPP gratis setiap menit. Sangat hemat dan ramah pendidik!
+      {/* SECTION 1.5: PROMPT INFOGRAFIS KELAS KREATIF */}
+      <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-3">
+          <div className="flex items-center gap-2 select-none">
+            <Image className="w-5 h-5 text-pink-600" />
+            <div>
+              <h4 className="text-sm font-extrabold text-[#0D1D34] font-display uppercase tracking-wide">
+                🎨 Prompt Desain Infografis Visual (Clay Style)
+              </h4>
+              <p className="text-[11px] text-slate-500 font-medium font-sans">
+                Gunakan prompt AI khusus ini untuk menggambar infografis visual pembelajaran yang memukau
               </p>
             </div>
           </div>
 
-          {/* DYNAMIC FEEDBACK SUBMISSION */}
-          <div className="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-3xs text-slate-800">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1 shadow-3xs pb-2 border-b border-slate-50 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-emerald-600" /> KIRIM MASUKAN INSTAN
-            </h3>
-            <p className="text-[10px] text-slate-500 font-semibold mb-3 leading-relaxed">
-              Ada kendala, menemukan bug, atau punya ide fitur baru? Kirimkan langsung ke tim pengembang kami melalu formulir ini.
-            </p>
-
-            {isSent ? (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-3">
-                <span className="text-2xl block animate-bounce">💌</span>
-                <h4 className="text-xs font-black text-emerald-900 font-display">Terkirim Hasil Evaluasi!</h4>
-                <p className="text-[10px] text-emerald-700 font-medium leading-relaxed">
-                  Terima kasih banyak atas partisipasinya! Pengembang akan segera menanggapinya demi menyusun pembaruan versi rilis stabil platform.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => { setIsSent(false); }}
-                  className="bg-emerald-600 hover:bg-[#1E3A8A] text-white text-[9.5px] font-black py-2 px-3.5 rounded-xl transition cursor-pointer"
-                >
-                  Tulis Masukan Lagi
-                </button>
-              </div>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(promptInfografis);
+              showToast("📋 Berhasil menyalin prompt gambar infografis!");
+              setCopiedPrompt(true);
+              setTimeout(() => setCopiedPrompt(false), 2500);
+            }}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white rounded-xl py-2 px-3.5 shadow-xs text-xs font-black transition-all cursor-pointer border-0 active:scale-95 text-center justify-center"
+          >
+            {copiedPrompt ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-white animate-bounce" />
+                <span>Tersalin!</span>
+              </>
             ) : (
-              <form onSubmit={submitFeedback} className="space-y-3">
-                
-                {/* CATEGORIES BUTTONS GROUP */}
-                <div className="grid grid-cols-3 gap-1 px-0.5">
-                  <button
-                    type="button"
-                    onClick={() => { setCategory("bug"); playSfx("click"); }}
-                    className={`py-2 px-1 text-[10px] font-black rounded-xl border flex flex-col items-center gap-1 transition ${
-                      category === "bug" 
-                        ? "bg-red-50 border-red-300 text-red-700" 
-                        : "bg-slate-50 border-slate-150 text-slate-650 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Bug className="w-3.5 h-3.5 text-red-500" />
-                    <span>Lapor Bug</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCategory("idea"); playSfx("click"); }}
-                    className={`py-2 px-1 text-[10px] font-black rounded-xl border flex flex-col items-center gap-1 transition ${
-                      category === "idea" 
-                        ? "bg-amber-50 border-amber-300 text-amber-700" 
-                        : "bg-slate-50 border-slate-150 text-slate-650 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Saran Fitur</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCategory("love"); playSfx("click"); }}
-                    className={`py-2 px-1 text-[10px] font-black rounded-xl border flex flex-col items-center gap-1 transition ${
-                      category === "love" 
-                        ? "bg-emerald-50 border-emerald-300 text-emerald-700" 
-                        : "bg-slate-50 border-slate-150 text-slate-650 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Heart className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                    <span>Pujian</span>
-                  </button>
-                </div>
-
-                <div>
-                  <textarea
-                    rows={3}
-                    required
-                    value={feedbackText}
-                    onChange={(e) => setFeedbackText(e.target.value)}
-                    placeholder="Contoh: 'Di fitur nilai kelas 4A, deskripsinya di raport terkadang kurang detail, tolong tambahkan opsi pilihan kalimat...'"
-                    className="w-full text-[11px] p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/10 outline-none transition font-medium text-slate-800"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSending || !feedbackText.trim()}
-                  className="w-full bg-[#1E3A8A] hover:bg-blue-700 disabled:bg-slate-200 text-white font-black text-xs py-3 rounded-2xl cursor-pointer transition shadow-3xs flex items-center justify-center gap-2 select-none"
-                >
-                  {isSending ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                      <span>Mengirimkan Masukan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Kirim Evaluasi Sekarang ✈️</span>
-                    </>
-                  )}
-                </button>
-              </form>
+              <>
+                <Copy className="w-3.5 h-3.5 text-white" />
+                <span>Salin Prompt Gambar</span>
+              </>
             )}
+          </button>
+        </div>
 
-            {/* MY RECENT SAVED FEEDBACKS */}
-            {myFeedbacks.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
-                <p className="text-[8.5px] font-black text-slate-400 uppercase tracking-widest">RIWAYAT MASUKAN SAYA ({myFeedbacks.length}):</p>
-                <div className="max-h-[140px] overflow-y-auto space-y-1.5 scrollbar-none pr-1">
-                  {myFeedbacks.slice(0, 3).map((f: any, i: number) => (
-                    <div key={i} className="p-2.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1 text-[10px]">
-                      <div className="flex items-center justify-between">
-                        <span className={`font-black text-[9px] uppercase px-1.5 py-0.5 rounded ${
-                          f.type.includes("Bug") 
-                            ? "bg-red-50 text-red-700" 
-                            : f.type.includes("Saran") 
-                              ? "bg-amber-50 text-amber-700" 
-                              : "bg-emerald-50 text-emerald-700"
-                        }`}>{f.type}</span>
-                        <span className="text-[8px] text-slate-400 font-mono">
-                          {new Date(f.timestamp).toLocaleDateString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      </div>
-                      <p className="text-[#334155] font-medium leading-relaxed italic">{f.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+        <div className="text-[11.5px] leading-relaxed text-slate-700">
+          Ubah materi ajar abstrak menjadi gambar cetak visual bergaya animasi kartun terkenal atau game populer (seperti Mobile Legends, Free Fire, dan PUBG) guna memacu imajinasi anak dalam kelas. Salin formula prompt otomatis yang disesuaikan secara dinamis dengan tema aktif Anda ke dalam pembuat gambar AI.
+        </div>
 
+        <div className="bg-rose-50/45 border border-rose-100 p-4 rounded-xl space-y-2">
+          <span className="text-[10px] text-rose-800 font-extrabold block uppercase tracking-wide font-mono">
+            Prompt Generator Gambar (Bahasa Inggris Otomatis):
+          </span>
+          <p className="text-xs text-slate-850 font-semibold font-mono bg-white p-3 rounded-lg border border-rose-100 select-all leading-relaxed shadow-3xs">
+            "{promptInfografis}"
+          </p>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[10.5px] leading-relaxed font-sans text-slate-600 space-y-1">
+          <div className="font-extrabold text-[#0D1D34]">💡 Cara Penggunaan Pintar di Kelas:</div>
+          <ol className="list-decimal pl-4 space-y-1">
+            <li>Salin prompt di atas, lalu buka AI Generator favorit Anda seperti <strong>ChatGPT Plus (DALL-E 3)</strong>, <strong>Google Gemini Advanced / Gemini Apps</strong>, atau <strong>Bing Image Creator / Canva AI</strong>.</li>
+            <li>Tempelkan (paste) prompt untuk memproses ilustrasi 3D berkualitas tinggi yang imut, kaya detail, dan berlabel pendidikan sesuai topik ajar.</li>
+            <li>Unduh hasilnya, lalu cetak sebagai poster dinding kelas, tempel di LKPD sebagai diagram panduan, atau sisipkan ke dalam materi presentasi canva Anda!</li>
+          </ol>
+        </div>
+      </div>
+
+      {/* SECTION 2: REKOMENDASI VIDEO UTAMA */}
+      <div className="bg-white border border-slate-100 p-5 rounded-xl shadow-xs space-y-4">
+        <div className="flex items-center gap-2 select-none border-b border-slate-50 pb-2">
+          <Video className="w-4 h-4 text-rose-600" />
+          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+            Rekomendasi Video Pembelajaran
+          </h4>
+        </div>
+
+        <p className="text-slate-500 text-xs font-medium leading-relaxed">
+          Cari materi audio-visual pendukung pembelajaran secara interaktif di YouTube:
+        </p>
+
+        <div className="p-4 bg-rose-50/50 border border-rose-100/50 rounded-xl space-y-2 select-none">
+          <span className="text-[10px] text-rose-700 font-bold block uppercase tracking-wide">Kata Kunci Hasil Penyusunan:</span>
+          <strong className="text-slate-800 text-sm block">"{youtubeSaran.keyword_pencarian_utama}"</strong>
+          
+          <a
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSaran.keyword_pencarian_utama)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg transition mt-2 shadow-xs cursor-pointer"
+          >
+            Cari Video Animasi di Youtube →
+          </a>
+        </div>
+      </div>
+
+      {/* SECTION 3: BAHAN SLIDE PRESENTASI CANVA AI */}
+      <div className="bg-white border border-slate-100 p-5 rounded-xl shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-50 pb-2 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Presentation className="w-4 h-4 text-orange-500" />
+            <div>
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                Slide Presentasi Canva AI
+              </h4>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Penyusunan halaman presentasi otomatis untuk Canva atau Gamma
+              </p>
+            </div>
           </div>
 
-        </div>
-
-      </div>
-
-      {/* QUICK INLINE ACTION TRIGGERS */}
-      <div className="bg-white border border-slate-200/90 p-6 rounded-3xl text-center space-y-4 shadow-3xs">
-        <h3 className="text-sm font-black text-slate-800">Apakah Anda Siap Mencoba Studio Pembuatan RPP Cerdas?</h3>
-        <p className="text-xs text-slate-500 font-medium max-w-lg mx-auto">
-          Gunakan kekuatan kecerdasan buatan untuk membantu Anda menyusun program pengajaran, asesmen formatif, soal kuis, hingga lembar kegiatan (LKPD) secara otomatis dalam hitungan detik.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
             type="button"
-            onClick={() => { setCurrentScreen("studio"); playSfx("success"); }}
-            className="w-full sm:w-auto bg-[#1E3A8A] hover:bg-blue-700 text-white font-black text-xs px-8 py-3.5 rounded-2xl hover:scale-[1.01] transition-all flex items-center justify-center gap-2 shadow-3xs cursor-pointer"
+            onClick={() => {
+              navigator.clipboard.writeText(getCanvaAIText());
+              showToast("📋 Berhasil menyalin seluruh bahan draf teks slide Canva AI!");
+              setCopiedAll(true);
+              setTimeout(() => setCopiedAll(false), 2500);
+            }}
+            className="flex items-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg py-1.5 px-3 shadow-xs text-xs font-bold transition-all cursor-pointer border-0 active:scale-95"
           >
-            Mulai Buat Perangkat Ajar Sekarang <ArrowRight className="w-4 h-4" />
+            {copiedAll ? (
+              <>
+                <Check className="w-3 h-3 text-white animate-bounce" />
+                Tersalin!
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3 text-white" />
+                Salin Bahan Slide
+              </>
+            )}
           </button>
+        </div>
+
+        <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-xl space-y-2">
+          <span className="text-xs font-bold text-orange-900 flex items-center gap-1.5 uppercase tracking-wide select-none">
+            <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+            Konsep Slide Pembelajaran
+          </span>
+
+          <p className="text-[11px] leading-relaxed text-slate-600">
+            Salin draf di bawah ini ke pembuat presentasi pihak ketiga (misal Gamma.app atau Canva Magic Design) untuk hasil instan:
+          </p>
+
+          <pre className="text-xs text-slate-700 bg-white p-4 rounded-xl max-h-60 overflow-y-auto font-sans leading-relaxed select-all whitespace-pre-wrap border border-slate-100 shadow-inner font-medium">
+            {getCanvaAIText()}
+          </pre>
+        </div>
+
+        {/* SECTION 4: TUTORIAL PREMIUM */}
+        <div className="bg-slate-900 border border-slate-950 p-5 rounded-xl space-y-3 text-white shadow-xs">
+          <h5 className="text-xs font-bold text-amber-400 tracking-wider uppercase flex items-center gap-1.5 border-b border-white/10 pb-2">
+            <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+            📖 TUTORIAL PREMIUM: MEMBUAT SLIDE CANTIK DI CANVA / GAMMA DALAM 60 DETIK
+          </h5>
           
-          <button
-            type="button"
-            onClick={() => { setCurrentScreen("home"); playSfx("click"); }}
-            className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-black text-xs px-6 py-3.5 rounded-2xl transition"
-          >
-            Kembali ke Beranda
-          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-[11px] leading-relaxed">
+            {/* Langkah Canva */}
+            <div className="space-y-3 bg-white/5 p-4 rounded-xl border border-white/10">
+              <span className="font-extrabold text-amber-300 uppercase text-[10.5px] tracking-wide block flex items-center gap-1">
+                ✨ Metode 1: Menggunakan Canva AI
+              </span>
+              <ul className="list-none space-y-2 text-slate-300">
+                <li>
+                  - <strong className="text-white">Langkah 1:</strong> Masuk ke Canva, lihat sidebar sebelah kiri bawah dan cari tulisan <strong className="text-amber-400">"Canva AI"</strong>.
+                </li>
+                <li>
+                  - <strong className="text-white">Langkah 2:</strong> Setelah masuk ke room Canva AI, klik <strong className="text-amber-400">"Design"</strong> lalu pilih <strong className="text-amber-400">"Presentation"</strong>.
+                </li>
+                <li>
+                  - <strong className="text-white">Langkah 3:</strong> Paste (tempel) draf materi slide yang didapat dari aplikasi <strong className="text-amber-300">GURU.AI</strong>, setelah itu klik <strong className="text-[#FF6B35]">"Generate"</strong> dan tunggu sampai selesai.
+                </li>
+              </ul>
+            </div>
+
+            {/* Langkah Gamma */}
+            <div className="space-y-3 bg-white/5 p-4 rounded-xl border border-white/10">
+              <span className="font-extrabold text-[#95A5FF] uppercase text-[10.5px] tracking-wide block flex items-center gap-1">
+                🔮 Metode 2: Menggunakan Gamma.app atau PowerPoint
+              </span>
+              <ul className="list-disc list-inside space-y-2 text-slate-300">
+                <li>
+                  <strong className="text-white">Gamma.app / Tome.app:</strong> Buka Gamma, pilih opsi <strong className="text-white font-bold font-sans">"Create New from Text/Outline"</strong>. Tempelkan teks slide terstruktur kami, lalu saksikan AI menggambar dan menata slide multimedia secara otomatis!
+                </li>
+                <li>
+                  <strong className="text-white">Microsoft PowerPoint:</strong> Buka PowerPoint, tempelkan teks ke lembar presentasi kosong atau ke asistem desainer PowerPoint Anda untuk mendelegasikan penyusunan halaman secara cepat.
+                </li>
+                <li>
+                  <strong className="text-amber-400">Vibes Positif &amp; Profesional:</strong> Seluruh output presentasi ini memiliki keselarasan mutlak dengan rancangan RPP agar guru tetap tampil kredibel, modern, dan percaya diri di hadapan siswa.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-2 text-center text-slate-400 text-[10px] border-t border-white/5 tracking-wider font-sans uppercase font-bold flex items-center justify-center gap-1 select-none">
+            🌟 GuruPintar AI - Menemani Guru Indonesia Menuju Pendidikan Berkemajuan 🌟
+          </div>
         </div>
       </div>
 
-    </motion.div>
+    </div>
   );
-}
+};
