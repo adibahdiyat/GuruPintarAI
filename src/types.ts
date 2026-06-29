@@ -126,3 +126,14 @@ export const SUBJECTS = [
   "BTQ (Baca Tulis Al-Qur'an)",
   "Input Mapel Manual (Ketik Sendiri)"
 ];
+
+export interface RppVersion {
+  id: string;
+  timestamp: string;
+  result: GenerateResult;
+  label: string;
+  materialText?: string;
+  classLevel?: string;
+  subject?: string;
+}
+

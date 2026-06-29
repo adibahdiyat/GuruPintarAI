@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, UserPlus, Download, Trash2, MoreVertical, AlertTriangle } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface AbsensiBulananProps {
   attendance: { [name: string]: { [day: number]: "Hadir" | "Sakit" | "Izin" | "Alpa" } };
@@ -30,10 +31,10 @@ export const AbsensiBulanan: React.FC<AbsensiBulananProps> = ({
   onSyncToGoogleSheets,
   isExportingSheets = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<"harian" | "summary">("harian");
-  const [selectedDay, setSelectedDay] = useState<number>(28); // Default active day
-  const [newStudentName, setNewStudentName] = useState<string>("");
   const now = new Date();
+  const [activeTab, setActiveTab] = useState<"harian" | "summary">("harian");
+  const [selectedDay, setSelectedDay] = useState<number>(now.getDate()); // Default active day
+  const [newStudentName, setNewStudentName] = useState<string>("");
   const [currentMonth, setCurrentMonth] = useState<number>(now.getMonth());
   const [currentYear, setCurrentYear] = useState<number>(now.getFullYear());
   const [activeKebabStudent, setActiveKebabStudent] = useState<string | null>(null);
@@ -352,98 +353,67 @@ export const AbsensiBulanan: React.FC<AbsensiBulananProps> = ({
     }
   };
 
-  // Horizontal Rekap Excel Export (.XLS)
+  // Horizontal Rekap Excel Export (.XLSX)
   const downloadAbsensiXlsx = () => {
-    let tableHtml = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="utf-8">
-        <style>
-          table { border-collapse: collapse; }
-          th { background-color: #1E3A8A; color: #FFFFFF; font-weight: bold; font-family: sans-serif; text-align: center; font-size: 11px; padding: 5px; }
-          td { font-family: sans-serif; text-align: center; font-size: 11px; padding: 5px; }
-          .text-left { text-align: left; }
-        </style>
-      </head>
-      <body>
-        <h2 style="font-family: sans-serif; color: #1E3A8A; margin-bottom: 2px;">REKAPITULASI PRESENSI BULANAN SISWA</h2>
-        <p style="font-family: sans-serif; font-size: 12px; margin: 2px 0;">Sekolah: <strong>${profileSchool}</strong> | Kelas: <strong>${classLevel}</strong> | Mapel: <strong>${subject}</strong></p>
-        <p style="font-family: sans-serif; font-size: 11px; margin: 2px 0; color: #555;">Guru Pengampu: <strong>${profileName}</strong> | NIP: <strong>${profileNip || "-"}</strong></p>
-        <table border="1">
-          <thead>
-            <tr>
-              <th rowspan="2" style="background-color: #0F172A; color: #ffffff;">No</th>
-              <th rowspan="2" style="background-color: #0F172A; color: #ffffff; text-align: left;">Nama Lengkap Murid</th>
-              <th colspan="${totalDays}" style="background-color: #1E3A8A; color: #ffffff;">${MONTHS[currentMonth]} ${currentYear}</th>
-              <th colspan="4" style="background-color: #EA580C; color: #ffffff;">Akumulasi</th>
-              <th rowspan="2" style="background-color: #10B981; color: #ffffff;">Kehadiran</th>
-            </tr>
-            <tr>
-    `;
+    const data: any[][] = [];
+    
+    // Title & Info
+    data.push(["REKAPITULASI PRESENSI BULANAN SISWA"]);
+    data.push([`Sekolah: ${profileSchool}`, `Kelas: ${classLevel}`, `Mapel: ${subject}`]);
+    data.push([`Guru Pengampu: ${profileName}`, `NIP: ${profileNip || "-"}`]);
+    data.push([]); // Spacer row
+    
+    // Header Row
+    const headerRow = ["No", "Nama Lengkap Murid"];
     for (let i = 1; i <= totalDays; i++) {
-      tableHtml += `<th style="background-color: #3B82F6; color: #ffffff; width: 30px;">${i}</th>`;
+      headerRow.push(i.toString());
     }
-    tableHtml += `
-              <th style="background-color: #10B981; color: #ffffff;">H</th>
-              <th style="background-color: #3B82F6; color: #ffffff;">S</th>
-              <th style="background-color: #FBBF24; color: #ffffff;">I</th>
-              <th style="background-color: #EF4444; color: #ffffff;">A</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
+    headerRow.push("H", "S", "I", "A", "Persentase Kehadiran");
+    data.push(headerRow);
 
+    // Student Rows
     Object.entries(attendance).forEach(([name, dateObj], idx) => {
       let hCount = 0;
       let sCount = 0;
       let iCount = 0;
       let aCount = 0;
 
-      tableHtml += `
-        <tr>
-          <td>${idx + 1}</td>
-          <td class="text-left" style="font-weight: bold; text-align: left;">${name}</td>
-      `;
+      const row = [idx + 1, name];
 
       for (let d = 1; d <= totalDays; d++) {
         const status = dateObj[d];
         let shortChar = "-";
-        let bg = "#F1F5F9";
-        if (status === "Hadir") { shortChar = "H"; bg = "#DCFCE7"; hCount++; }
-        else if (status === "Sakit") { shortChar = "S"; bg = "#DBEAFE"; sCount++; }
-        else if (status === "Izin") { shortChar = "I"; bg = "#FEF3C7"; iCount++; }
-        else if (status === "Alpa") { shortChar = "A"; bg = "#FEE2E2"; aCount++; }
-
-        tableHtml += `<td style="background-color: ${bg}; font-weight: bold; color: #475569;">${shortChar}</td>`;
+        if (status === "Hadir") { shortChar = "H"; hCount++; }
+        else if (status === "Sakit") { shortChar = "S"; sCount++; }
+        else if (status === "Izin") { shortChar = "I"; iCount++; }
+        else if (status === "Alpa") { shortChar = "A"; aCount++; }
+        row.push(shortChar);
       }
+
       const totalDaysLogged = hCount + sCount + iCount + aCount;
       const ratio = totalDaysLogged > 0 ? Math.round((hCount / totalDaysLogged) * 100) : 0;
-      tableHtml += `
-          <td style="font-weight: bold; background-color: #E6F4EA;">${hCount}</td>
-          <td style="font-weight: bold; background-color: #E8F0FE;">${sCount}</td>
-          <td style="font-weight: bold; background-color: #FEF7E0;">${iCount}</td>
-          <td style="font-weight: bold; background-color: #FCE8E6;">${aCount}</td>
-          <td style="font-weight: bold; background-color: #D1FAE5; color: #065F46;">${ratio}%</td>
-        </tr>
-      `;
+
+      row.push(hCount, sCount, iCount, aCount, `${ratio}%`);
+      data.push(row);
     });
 
-    tableHtml += `
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob(["\ufeff" + tableHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Rekap Presensi");
+    
+    // Write XLSX
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const fileBlob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    
+    const url = URL.createObjectURL(fileBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Rekap_Presensi_Bulanan_Kelas_${classLevel.replace(/\s+/g, "_")}.xls`;
+    link.download = `Rekap_Presensi_Bulanan_Kelas_${classLevel.replace(/\s+/g, "_")}.xlsx`;
     link.click();
-    showToast("📥 Rekap Absensi Bulanan (.XLSX) berhasil diunduh!");
+    
+    showToast("📥 Rekap Absensi Bulanan (.XLSX) berhasil diunduh — asli siap pakai!");
     if (onAddActivity) {
-      onAddActivity(`Ekspor rekapan Absensi Bulanan (.XLS) - Kelas ${classLevel}`);
+      onAddActivity(`Ekspor rekapan Absensi Bulanan (.XLSX) - Kelas ${classLevel}`);
     }
   };
 
@@ -470,6 +440,7 @@ export const AbsensiBulanan: React.FC<AbsensiBulananProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
         <div className="flex flex-wrap gap-2">
           <button
+            type="button"
             onClick={() => setActiveTab("harian")}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
               activeTab === "harian"
@@ -480,6 +451,7 @@ export const AbsensiBulanan: React.FC<AbsensiBulananProps> = ({
             📅 Pencatatan Harian ({MONTHS[currentMonth]} {currentYear})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("summary")}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
               activeTab === "summary"
@@ -494,6 +466,7 @@ export const AbsensiBulanan: React.FC<AbsensiBulananProps> = ({
         <div className="flex items-center gap-2 w-full sm:w-auto self-stretch sm:self-auto justify-end relative">
           {onSyncToGoogleSheets && (
             <button
+              type="button"
               disabled={isExportingSheets}
               onClick={onSyncToGoogleSheets}
               className="bg-[#1E3A8A] hover:bg-[#152a66] disabled:bg-slate-300 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition cursor-pointer disabled:cursor-wait select-none"
@@ -504,6 +477,7 @@ export const AbsensiBulanan: React.FC<AbsensiBulananProps> = ({
           )}
 
           <button
+            type="button"
             onClick={downloadAbsensiXlsx}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition cursor-pointer"
           >
@@ -652,6 +626,24 @@ export const AbsensiBulanan: React.FC<AbsensiBulananProps> = ({
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
+
+                {/* Quick Auto Sync Calendar to Today */}
+                <button
+                  type="button"
+                  id="btn-sync-today"
+                  onClick={() => {
+                    const today = new Date();
+                    setCurrentMonth(today.getMonth());
+                    setCurrentYear(today.getFullYear());
+                    setSelectedDay(today.getDate());
+                    showToast(`📅 Kalender otomatis diselaraskan ke hari ini: ${today.getDate()} ${MONTHS[today.getMonth()]} ${today.getFullYear()}`);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded-lg flex items-center gap-1 cursor-pointer transition-all shadow-sm active:scale-95 select-none"
+                  title="Seleraskan ke tanggal hari ini"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  Hari Ini
+                </button>
               </div>
             </div>
 

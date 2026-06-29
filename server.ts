@@ -27,9 +27,9 @@ async function generateContentWithRetryAndFallback(
   const requestedModel = params.model;
   const models = Array.from(new Set([
     ...(requestedModel ? [requestedModel] : []),
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash"
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest"
   ]));
   let lastError: any = null;
 
@@ -752,7 +752,7 @@ REFLEKSI:
 
       const response = await generateContentWithRetryAndFallback(ai, {
         contents,
-        model: model || "gemini-2.0-flash",
+        model: model || "gemini-3.5-flash",
         config: {
           systemInstruction: systemInstruction || "Anda adalah GURU.AI, Asisten Digital Administrasi Guru tepercaya di Indonesia binaan Kementerian Pendidikan dan Kebudayaan Republik GuruPintar. Anda bertugas mendampingi Bapak/Ibu guru dalam merancang skenario pemicu ajar, memberikan saran konkret penanganan kelas, memberikan instruksi ice breaking kelas, serta merinci regulasi Kurikulum Merdeka 2026. Jawablah secara konkret, ramah, antusias, solutif, dan penuh rasa hormat struktural. Gunakan formatting Markdown tebal dan poin miring yang rapi.",
         }

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { ChevronDown, Download, Copy, FileText, CheckCircle2, Sparkles, BookOpen, Presentation, Eye, EyeOff, ClipboardList, Award, Users, Plus, Trash2, CheckSquare, Square, Check, Zap, Printer, X, Settings, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronDown, Download, Copy, FileText, CheckCircle2, Sparkles, BookOpen, Presentation, Eye, EyeOff, ClipboardList, Award, Users, Plus, Trash2, CheckSquare, Square, Check, Zap, Printer, X, Settings, ZoomIn, ZoomOut, Save, PenLine, FlaskConical, BarChart3, BookMarked } from "lucide-react";
 import { ModulAjarRppMerdeka, MagicStudioOutput, PptInteractiveVisualSlide, SaranYoutubeSpesifik } from "../types";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, BorderStyle, WidthType, AlignmentType } from "docx";
 import { getMediaAlatPeraga } from "./MediaBelajarView";
+import { translateErrorMessage } from "../App";
 
 // Helper to parse and render markdown-style stepwise layouts inside the paper area
 export const renderStepwiseContent = (
@@ -279,6 +280,12 @@ interface RppViewProps {
   selectedDokumen?: "modul_ajar" | "tp_atp" | "lkpd" | "asesmen" | "soal_ujian" | null;
   setSelectedDokumen?: (val: "modul_ajar" | "tp_atp" | "lkpd" | "asesmen" | "soal_ujian" | null) => void;
   onDownloadDocx?: (konten: string, judul: string) => void;
+  kopSuratImage?: string;
+  namaKepalaSekolah?: string;
+  nipKepalaSekolah?: string;
+  kotaSekolah?: string;
+  isFocusView?: boolean;
+  setIsFocusView?: (val: boolean) => void;
 }
 
 export const RppView: React.FC<RppViewProps> = ({
@@ -305,6 +312,12 @@ export const RppView: React.FC<RppViewProps> = ({
   handleGenerateDokumen,
   selectedDokumen = null,
   setSelectedDokumen,
+  kopSuratImage = "",
+  namaKepalaSekolah = "",
+  nipKepalaSekolah = "",
+  kotaSekolah = "",
+  isFocusView = false,
+  setIsFocusView = (_val: boolean) => {},
 }) => {
   const [viewMode, setViewMode] = useState<"rpp" | "tp_atp" | "lkpd" | "asesmen" | "soal_ujian">("rpp");
 
@@ -868,7 +881,7 @@ Kunci Jawaban & Pembahasan Detil:
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `RPP_${subject}_${classLevel}.txt`.replace(/\s+/g, "_");
+    a.download = `RPP_${subject || ""}_${classLevel || ""}.txt`.replace(/\s+/g, "_");
     a.click();
     URL.revokeObjectURL(url);
     showToast("📄 RPP berhasil diunduh sebagai file teks!");
@@ -981,7 +994,7 @@ Kunci Jawaban & Pembahasan Detil:
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `Cetak_RPP_Merdeka_${subject.replace(/\s+/g, "_")}_${classLevel.replace(/\s+/g, "")}.html`;
+        link.download = `Cetak_RPP_Merdeka_${(subject || "").replace(/\s+/g, "_")}_${(classLevel || "").replace(/\s+/g, "")}.html`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1008,7 +1021,7 @@ Kunci Jawaban & Pembahasan Detil:
           const url = URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = url;
-          link.download = `Cetak_RPP_Merdeka_${subject.replace(/\s+/g, "_")}_${classLevel.replace(/\s+/g, "")}.html`;
+          link.download = `Cetak_RPP_Merdeka_${(subject || "").replace(/\s+/g, "_")}_${(classLevel || "").replace(/\s+/g, "")}.html`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -1851,15 +1864,15 @@ Kunci Jawaban & Pembahasan Detil:
       const link = document.createElement("a");
       link.href = url;
       const safeFilename = p5Theme
-        ? `Modul_Proyek_P5_${p5Theme.replace(/\s+/g, "_")}_${classLevel.replace(/\s+/g, "")}.docx`
-        : `Modul_Ajar_RPP_Lengkap_${subject.replace(/\s+/g, "_")}_${classLevel.replace(/\s+/g, "")}.docx`;
+        ? `Modul_Proyek_P5_${p5Theme.replace(/\s+/g, "_")}_${(classLevel || "").replace(/\s+/g, "")}.docx`
+        : `Modul_Ajar_RPP_Lengkap_${(subject || "").replace(/\s+/g, "_")}_${(classLevel || "").replace(/\s+/g, "")}.docx`;
       link.download = safeFilename;
       link.click();
       URL.revokeObjectURL(url);
       showToast(p5Theme ? "📥 Modul Proyek P5 (.DOCX) lengkap sukses diproduksi!" : "📥 Modul RPP, LKPD, & Asesmen (.DOCX) Word-Ready sukses diterbitkan!");
     }).catch((err: any) => {
       console.error(err);
-      showToast("❌ Gagal membuat dokumen DOCX: " + err.message);
+      showToast("❌ Gagal membuat dokumen DOCX: " + translateErrorMessage(err));
     });
   };
 
@@ -2181,7 +2194,7 @@ Kunci Jawaban & Pembahasan Detil:
     link.href = url;
     const safeFilename = p5Theme
       ? `Modul_Proyek_P5_${p5Theme.replace(/\s+/g, "_")}_Formatted.doc`
-      : `Modul_Ajar_RPP_Lengkap_${subject.replace(/\s+/g, "_")}_Formatted.doc`;
+      : `Modul_Ajar_RPP_Lengkap_${(subject || "").replace(/\s+/g, "_")}_Formatted.doc`;
     link.download = safeFilename;
     document.body.appendChild(link);
     link.click();
@@ -2262,7 +2275,7 @@ Kunci Jawaban & Pembahasan Detil:
           {/* Upper toolbar */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100 mb-4 select-none">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 text-left">
-                <span className="text-xl shrink-0">📄</span>
+                <FileText className="w-5 h-5 text-[#1E3A8A] shrink-0" />
                 <div>
                   <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight mt-0.5 flex items-center gap-1.5 font-sans">
                     {viewMode === "rpp" ? "Modul Ajar RPP Merdeka" :
@@ -2275,14 +2288,64 @@ Kunci Jawaban & Pembahasan Detil:
               </div>
 
               <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start md:justify-end">
-                {/* Save to Dokumen Saya */}
+                {/* Focus View */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFocusView(!isFocusView);
+                    showToast(isFocusView ? "👁️ Mode biasa aktif" : "👁️ Mode Focus View aktif");
+                  }}
+                  className={`flex items-center gap-1.5 rounded-xl py-1.5 px-3 text-[10px] font-black transition select-none cursor-pointer border ${
+                    isFocusView 
+                      ? "bg-indigo-50 border-indigo-200 text-[#1E3A8A] hover:bg-indigo-100" 
+                      : "bg-white border-slate-250 text-slate-700 hover:bg-slate-50"
+                  }`}
+                  title="Toggle Mode Focus View (Sembunyikan Sidebar & Navigasi)"
+                >
+                  {isFocusView ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Biasa</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Focus View</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Pratinjau */}
+                <button type="button"
+                  onClick={() => setIsPdfPreviewOpen(!isPdfPreviewOpen)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black transition cursor-pointer border ${
+                    isPdfPreviewOpen
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                  }`}>
+                  <Eye className="w-3.5 h-3.5" />
+                  Pratinjau
+                </button>
+
+                {/* Edit */}
+                <button type="button"
+                  onClick={() => { setIsEditMode(!isEditMode); showToast(isEditMode ? "✅ Mode edit nonaktif." : "✏️ Mode edit aktif."); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black transition cursor-pointer border ${
+                    isEditMode
+                      ? "bg-amber-500 text-white border-amber-500"
+                      : "bg-white text-slate-700 border-slate-200 hover:border-amber-300 hover:bg-slate-50"
+                  }`}>
+                  <PenLine className="w-3.5 h-3.5" />
+                  {isEditMode ? "Sedang Edit" : "Edit"}
+                </button>
+
+                {/* Simpan */}
                 {onSaveToLibrary && (
-                  <button
-                    type="button"
+                  <button type="button"
+                    disabled={isSavedToLib}
                     onClick={() => {
-                      const finalSubjName = (subject === "Input Mapel Manual (Ketik Sendiri)" || subject === "Semua Mata Pelajaran") ? manualSubject || "Materi Kustom" : subject;
-                      const titleProposal = `${finalSubjName}`;
-                      
+                      const finalSubjName = (subject === "Input Mapel Manual (Ketik Sendiri)" || subject === "Semua Mata Pelajaran")
+                        ? manualSubject || "Materi Kustom" : subject;
                       const combinedResult = {
                         modul_ajar_rpp_merdeka: rpp,
                         ppt_canva_ready_slides: slides || [],
@@ -2290,85 +2353,39 @@ Kunci Jawaban & Pembahasan Detil:
                         magic_studio_output: magicStudioOutput,
                         metode_pembelajaran: selectedMetode
                       };
-                      
-                      onSaveToLibrary(
-                        titleProposal,
-                        classLevel,
-                        finalSubjName,
-                        materialText || rpp.komponen_inti.materi_pokok || "Materi rujukan.",
-                        combinedResult
-                      );
+                      onSaveToLibrary(finalSubjName, classLevel, finalSubjName,
+                        materialText || rpp.komponen_inti.materi_pokok || "Materi.",
+                        combinedResult);
                       setIsSavedToLib(true);
                     }}
-                    className={`flex items-center gap-1 rounded-xl py-1.5 px-3 text-[10px] font-black transition select-none cursor-pointer ${
-                      isSavedToLib 
-                        ? "bg-slate-100 border border-slate-300 text-slate-500 cursor-not-allowed" 
-                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-3xs"
-                    }`}
-                    disabled={isSavedToLib}
-                    title="Simpan dokumen ini ke Dokumen Saya"
-                  >
-                    <span>{isSavedToLib ? "✓ Tersimpan" : "💾 Simpan"}</span>
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black transition cursor-pointer border ${
+                      isSavedToLib
+                        ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                        : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                    }`}>
+                    <Save className="w-3.5 h-3.5" />
+                    {isSavedToLib ? "Tersimpan" : "Simpan"}
                   </button>
                 )}
 
-                {/* Unified Export Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
-                    className="flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#E55A27] text-white rounded-xl py-1.5 px-4 text-[10.5px] font-black transition shadow-sm cursor-pointer select-none"
-                    title="Ekspor dokumen hasil"
-                  >
-                    <span>📥 Unduh ▾</span>
-                  </button>
-
-                  {isExportDropdownOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsExportDropdownOpen(false)}></div>
-                      <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-slate-200 shadow-xl z-50 p-2 text-left animate-slide-up">
-                        <div className="px-3 py-1.5 border-b border-slate-100 select-none">
-                          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide block font-sans">PROSES DOKUMEN</span>
-                        </div>
-                        
-                        {/* DOCX Download */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsExportDropdownOpen(false);
-                            onDownloadDocx?.(
-                              magicStudioOutput?.rpp_merdeka_formal?.langkah_pembelajaran_rinci || "",
-                              `Modul_Ajar_${classLevel}_${subject}`
-                            );
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-[10.5px] text-slate-755 font-bold hover:bg-slate-50 transition rounded-xl text-left cursor-pointer"
-                        >
-                          <span className="text-sm">📥</span>
-                          <div>
-                            <strong className="block text-slate-905 font-extrabold">Download .DOCX</strong>
-                            <span className="text-[8.5px] text-slate-400 block -mt-0.5 font-sans">Berkas Word asli Kurikulum Merdeka</span>
-                          </div>
-                        </button>
-
-                        {/* Print PDF */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsExportDropdownOpen(false);
-                            handleCetakPdf();
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-[10.5px] text-slate-755 font-bold hover:bg-slate-50 transition rounded-xl text-left cursor-pointer"
-                        >
-                          <span className="text-sm">🖨️</span>
-                          <div>
-                            <strong className="block text-slate-910 font-extrabold">Cetak / PDF</strong>
-                            <span className="text-[8.5px] text-slate-400 block -mt-0.5 font-sans">Picu panel cetak mesin printer</span>
-                          </div>
-                        </button>
-                      </div>
-                    </>
+                {/* Download Word */}
+                <button type="button"
+                  onClick={() => onDownloadDocx?.(
+                    magicStudioOutput?.rpp_merdeka_formal?.langkah_pembelajaran_rinci || "",
+                    `Modul_Ajar_${classLevel}_${subject}`
                   )}
-                </div>
+                  className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-3 py-1.5 rounded-xl text-[10px] font-black transition cursor-pointer">
+                  <Download className="w-3.5 h-3.5" />
+                  .DOCX
+                </button>
+
+                {/* Cetak PDF */}
+                <button type="button"
+                  onClick={handleCetakPdf}
+                  className="flex items-center gap-1.5 bg-[#1E3A8A] hover:bg-blue-800 text-white px-4 py-1.5 rounded-xl text-[10px] font-black transition cursor-pointer shadow-sm">
+                  <Printer className="w-3.5 h-3.5" />
+                  Cetak PDF
+                </button>
               </div>
             </div>
 
@@ -2404,8 +2421,8 @@ Kunci Jawaban & Pembahasan Detil:
             {viewMode === "lkpd" && !dokumenResult?.lkpd && (
               <div className="mb-4 bg-blue-50/70 border border-blue-150 p-4 rounded-2xl text-left flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 select-none no-print animate-fade-in">
                 <div className="space-y-1">
-                  <p className="text-xs font-black text-blue-950 uppercase flex items-center gap-1">
-                    <span>📝</span> BUAT LEMBAR KERJA SISWA (LKPD) KUSTOM
+                  <p className="text-xs font-black text-blue-950 uppercase flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-blue-600 shrink-0" /> BUAT LEMBAR KERJA SISWA (LKPD) KUSTOM
                   </p>
                   <p className="text-slate-600 text-[10.5px] font-semibold leading-relaxed">
                     Formulasikan lembar aktivitas, instruksi, dan jurnal reflektif siswa yang mendalam untuk topik ini.
@@ -2425,8 +2442,8 @@ Kunci Jawaban & Pembahasan Detil:
             {viewMode === "asesmen" && !dokumenResult?.asesmen && (
               <div className="mb-4 bg-purple-50/70 border border-purple-150 p-4 rounded-2xl text-left flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 select-none no-print animate-fade-in">
                 <div className="space-y-1">
-                  <p className="text-xs font-black text-purple-950 uppercase flex items-center gap-1">
-                    <span>📊</span> BUAT INSTRUMEN ASESMEN &amp; RUBRIK PENILAIAN
+                  <p className="text-xs font-black text-purple-950 uppercase flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-purple-600 shrink-0" /> BUAT INSTRUMEN ASESMEN &amp; RUBRIK PENILAIAN
                   </p>
                   <p className="text-slate-600 text-[10.5px] font-semibold leading-relaxed">
                     Hasilkan kisi-kisi evaluatif term-long dan detail rubrik penilaian objektif kualitatif.
@@ -2446,8 +2463,8 @@ Kunci Jawaban & Pembahasan Detil:
             {viewMode === "soal_ujian" && !dokumenResult?.soal_ujian && (
               <div className="mb-4 bg-rose-50/70 border border-rose-150 p-4 rounded-2xl text-left flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 select-none no-print animate-fade-in">
                 <div className="space-y-1">
-                  <p className="text-xs font-black text-rose-950 uppercase flex items-center gap-1">
-                    <span>✍️</span> BUAT PAKET BUTIR SOAL UJIAN LENGKAP
+                  <p className="text-xs font-black text-rose-950 uppercase flex items-center gap-2">
+                    <BookMarked className="w-4 h-4 text-rose-600 shrink-0" /> BUAT PAKET BUTIR SOAL UJIAN LENGKAP
                   </p>
                   <p className="text-slate-600 text-[10.5px] font-semibold leading-relaxed">
                     Formulasikan butir soal pilihan ganda, essay nalar tinggi (HOTS) beserta kunci jawaban lengkap.
@@ -2470,7 +2487,9 @@ Kunci Jawaban & Pembahasan Detil:
           contentEditable={isEditMode}
           suppressContentEditableWarning={true}
           style={{ fontFamily: selectedFont === "Arial" ? "Arial, Helvetica, sans-serif" : "'Times New Roman', Times, serif", color: "#000000" }}
-          className="bg-white p-4 sm:p-8 text-[12.5px] sm:text-[13px] leading-relaxed text-black max-h-[700px] overflow-y-auto select-text border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className={`bg-white p-4 sm:p-8 text-[12.5px] sm:text-[13px] leading-relaxed text-black overflow-y-auto select-text border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+            isFocusView ? "max-h-[1400px]" : "max-h-[700px]"
+          }`}
         >
           
           {/* KOP Surat Header segment */}
@@ -2650,11 +2669,15 @@ Kunci Jawaban & Pembahasan Detil:
                         <span className="font-sans text-[10px] text-slate-605">Alokasi: 10 - 15 Menit</span>
                       </div>
                       <p className="leading-relaxed pl-4 whitespace-pre-line text-black">
-                        {magicStudioOutput
-                          ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.includes("A. KEGIATAN PEMBUKA")
-                            ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.split("A. KEGIATAN PEMBUKA")[1]?.split("B. KEGIATAN INTI")[0]
-                            : magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci
-                          : rpp.langkah_pembelajaran.kegiatan_pembuka}
+                        {(() => {
+                          const rinci = magicStudioOutput?.rpp_merdeka_formal?.langkah_pembelajaran_rinci;
+                          if (rinci) {
+                            return rinci.includes("A. KEGIATAN PEMBUKA")
+                              ? rinci.split("A. KEGIATAN PEMBUKA")[1]?.split("B. KEGIATAN INTI")[0]
+                              : rinci;
+                          }
+                          return rpp.langkah_pembelajaran.kegiatan_pembuka;
+                        })()}
                       </p>
                     </div>
 
@@ -2665,10 +2688,15 @@ Kunci Jawaban & Pembahasan Detil:
                         <span className="font-sans text-[10px] text-slate-605">Alokasi: 45 - 50 Menit</span>
                       </div>
                       <div className="leading-relaxed pl-4 whitespace-pre-line text-black font-sans text-[12px]">
-                        {magicStudioOutput ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.includes("B. KEGIATAN INTI") 
-                          ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.split("B. KEGIATAN INTI")[1]?.split("C. KEGIATAN PENUTUP")[0] 
-                          : magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci 
-                          : rpp.langkah_pembelajaran.kegiatan_inti_mendalam}
+                        {(() => {
+                          const rinci = magicStudioOutput?.rpp_merdeka_formal?.langkah_pembelajaran_rinci;
+                          if (rinci) {
+                            return rinci.includes("B. KEGIATAN INTI")
+                              ? rinci.split("B. KEGIATAN INTI")[1]?.split("C. KEGIATAN PENUTUP")[0]
+                              : rinci;
+                          }
+                          return rpp.langkah_pembelajaran.kegiatan_inti_mendalam;
+                        })()}
                       </div>
                     </div>
 
@@ -2679,11 +2707,15 @@ Kunci Jawaban & Pembahasan Detil:
                         <span className="font-sans text-[10px] text-slate-605">Alokasi: 10 - 15 Menit</span>
                       </div>
                       <p className="leading-relaxed pl-4 whitespace-pre-line text-black">
-                        {magicStudioOutput
-                          ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.includes("C. KEGIATAN PENUTUP")
-                            ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.split("C. KEGIATAN PENUTUP")[1]
-                            : magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci
-                          : rpp.langkah_pembelajaran.kegiatan_penutup}
+                        {(() => {
+                          const rinci = magicStudioOutput?.rpp_merdeka_formal?.langkah_pembelajaran_rinci;
+                          if (rinci) {
+                            return rinci.includes("C. KEGIATAN PENUTUP")
+                              ? rinci.split("C. KEGIATAN PENUTUP")[1]
+                              : rinci;
+                          }
+                          return rpp.langkah_pembelajaran.kegiatan_penutup;
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -3693,21 +3725,35 @@ Kunci Jawaban & Pembahasan Detil:
                             </div>
                           )}
                           <div className="z-10 relative flex-1 flex flex-col">
-                            {/* Kop Header */}
-                            <div className={`text-center pb-4 mb-6 ${
-                              pdfKopStyle === "colored_border" 
-                                ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]" 
-                                : pdfKopStyle === "minimalist" 
-                                  ? "border-b border-gray-300" 
-                                  : "border-b-4 border-double border-black"
-                            }`}>
-                              <h2 className={`font-black text-[15px] uppercase tracking-wider ${pdfColorMode === "colored" ? "text-blue-900" : "text-black"}`}>{profileSchool}</h2>
-                              <p className="text-[9.5px] text-zinc-600 font-extrabold uppercase mt-0.5">TERAKREDITASI NASIONAL • KOMUNITAS GURU MERDEKA</p>
-                              <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
-                                <div>GURU: <span className="text-black font-black">{profileName}</span></div>
-                                <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "BELUM DIATUR"}</span></div>
+                            {/* Kop surat — pakai gambar jika ada, fallback ke teks nama sekolah */}
+                            {kopSuratImage ? (
+                              <div className="text-center pb-4 mb-4 border-b-4 border-double border-black">
+                                <img
+                                  src={kopSuratImage}
+                                  alt="Kop Sekolah"
+                                  className="max-h-[90px] max-w-full mx-auto object-contain"
+                                />
                               </div>
-                            </div>
+                            ) : (
+                              <div className={`text-center pb-4 mb-6 ${
+                                pdfKopStyle === "colored_border"
+                                  ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]"
+                                  : pdfKopStyle === "minimalist"
+                                    ? "border-b border-gray-300"
+                                    : "border-b-4 border-double border-black"
+                              }`}>
+                                <h2 className={`font-black text-[15px] uppercase tracking-wider ${
+                                  pdfColorMode === "colored" ? "text-blue-900" : "text-black"
+                                }`}>{profileSchool || "NAMA SEKOLAH"}</h2>
+                                <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">
+                                  {kotaSekolah || "KOTA SEKOLAH"}
+                                </p>
+                                <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
+                                  <div>GURU: <span className="text-black font-black">{profileName}</span></div>
+                                  <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "—"}</span></div>
+                                </div>
+                              </div>
+                            )}
                             <div className="text-center mb-6 space-y-1">
                               <h3 className="text-[13px] font-black uppercase tracking-wider text-black">
                                 MODUL AJAR / RENCANA PELAKSANAAN PEMBELAJARAN (RPP)
@@ -3717,18 +3763,34 @@ Kunci Jawaban & Pembahasan Detil:
                               </p>
                             </div>
                             <div className="space-y-4 text-left text-zinc-805">
-                              {renderStepwiseContent(activeResult)}
+                              {activeResult ? (
+                                <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-slate-800 font-sans">
+                                  {activeResult}
+                                </div>
+                              ) : (
+                                <div className="text-center py-16 space-y-3">
+                                  <div className="text-4xl">📄</div>
+                                  <p className="text-sm font-black text-slate-500">Belum ada konten RPP</p>
+                                  <p className="text-xs text-slate-400">
+                                    Generate RPP terlebih dahulu atau gunakan tombol Buat Perangkat Ajar di Studio.
+                                  </p>
+                                </div>
+                              )}
                             </div>
                             {pdfShowSignature && (
                               <div className="mt-10 grid grid-cols-2 gap-8 text-[11.5px] font-sans pt-6 border-t border-dashed border-zinc-300 font-bold uppercase select-none">
                                 <div className="text-center space-y-14">
                                   <div>
-                                    <p className="text-zinc-500 mb-0.5 text-[9.5px]">Mengetahui,</p>
-                                    <p className="text-black font-extrabold">KEPALA SEKOLAH {profileSchool}</p>
+                                    <p className="text-zinc-[#FF6B35] mb-0.5 text-[9.5px]">Mengetahui,</p>
+                                    <p className="text-black font-extrabold">
+                                      {namaKepalaSekolah || `KEPALA SEKOLAH`}
+                                    </p>
+                                    <p className="text-[9px] text-zinc-500 mt-0.5">
+                                      NIP. {nipKepalaSekolah || "................................"}
+                                    </p>
                                   </div>
                                   <div>
                                     <p className="text-black font-extrabold">___________________________</p>
-                                    <p className="text-zinc-500 text-[9px] mt-0.5">NIP / JABATAN SEKOLAH</p>
                                   </div>
                                 </div>
                                 <div className="text-center space-y-14">
@@ -3768,20 +3830,35 @@ Kunci Jawaban & Pembahasan Detil:
                               </div>
                             )}
                             <div className="z-10 relative flex-1 flex flex-col">
-                              <div className={`text-center pb-4 mb-6 ${
-                                pdfKopStyle === "colored_border" 
-                                  ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]" 
-                                  : pdfKopStyle === "minimalist" 
-                                    ? "border-b border-gray-300" 
-                                    : "border-b-4 border-double border-black"
-                              }`}>
-                                <h2 className={`font-black text-[15px] uppercase tracking-wider ${pdfColorMode === "colored" ? "text-blue-900" : "text-black"}`}>{profileSchool}</h2>
-                                <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">TERAKREDITASI NASIONAL • KOMUNITAS GURU MERDEKA</p>
-                                <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
-                                  <div>GURU: <span className="text-black font-black">{profileName}</span></div>
-                                  <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "BELUM DIATUR"}</span></div>
+                              {/* Kop surat — pakai gambar jika ada, fallback ke teks nama sekolah */}
+                              {kopSuratImage ? (
+                                <div className="text-center pb-4 mb-4 border-b-4 border-double border-black">
+                                  <img
+                                    src={kopSuratImage}
+                                    alt="Kop Sekolah"
+                                    className="max-h-[90px] max-w-full mx-auto object-contain"
+                                  />
                                 </div>
-                              </div>
+                              ) : (
+                                <div className={`text-center pb-4 mb-6 ${
+                                  pdfKopStyle === "colored_border"
+                                    ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]"
+                                    : pdfKopStyle === "minimalist"
+                                      ? "border-b border-gray-300"
+                                      : "border-b-4 border-double border-black"
+                                }`}>
+                                  <h2 className={`font-black text-[15px] uppercase tracking-wider ${
+                                    pdfColorMode === "colored" ? "text-blue-900" : "text-black"
+                                  }`}>{profileSchool || "NAMA SEKOLAH"}</h2>
+                                  <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">
+                                    {kotaSekolah || "KOTA SEKOLAH"}
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
+                                    <div>GURU: <span className="text-black font-black">{profileName}</span></div>
+                                    <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "—"}</span></div>
+                                  </div>
+                                </div>
+                              )}
                               <div className="text-center mb-6 space-y-1">
                                 <h3 className="text-[13px] font-black uppercase tracking-wider text-black">
                                   RENCANA PELAKSANAAN PEMBELAJARAN (RPP) / MODUL AJAR
@@ -3897,10 +3974,11 @@ Kunci Jawaban & Pembahasan Detil:
                                     </span>
                                     <div className="pl-3 mt-0.5 font-medium text-[11px] text-zinc-700 whitespace-pre-line leading-relaxed border-l border-zinc-200">
                                       {(() => {
-                                        const txt = magicStudioOutput
-                                          ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.includes("A. KEGIATAN PEMBUKA")
-                                            ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.split("A. KEGIATAN PEMBUKA")[1]?.split("B. KEGIATAN INTI")[0]
-                                            : magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci
+                                        const rinci = magicStudioOutput?.rpp_merdeka_formal?.langkah_pembelajaran_rinci;
+                                        const txt = rinci
+                                          ? rinci.includes("A. KEGIATAN PEMBUKA")
+                                            ? rinci.split("A. KEGIATAN PEMBUKA")[1]?.split("B. KEGIATAN INTI")[0]
+                                            : rinci
                                           : rpp.langkah_pembelajaran?.kegiatan_pembuka;
                                         return txt ? txt.trim() : "Apersepsi, berdoa bersama, presensi kesiapan murid, pemaparan tujuan pelajaran.";
                                       })()}
@@ -3912,10 +3990,11 @@ Kunci Jawaban & Pembahasan Detil:
                                     </span>
                                     <div className="pl-3 mt-0.5 font-medium text-[11px] text-zinc-700 whitespace-pre-line leading-relaxed border-l border-zinc-200">
                                       {(() => {
-                                        const txt = magicStudioOutput
-                                          ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.includes("B. KEGIATAN INTI")
-                                            ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.split("B. KEGIATAN INTI")[1]?.split("C. KEGIATAN PENUTUP")[0]
-                                            : magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci
+                                        const rinci = magicStudioOutput?.rpp_merdeka_formal?.langkah_pembelajaran_rinci;
+                                        const txt = rinci
+                                          ? rinci.includes("B. KEGIATAN INTI")
+                                            ? rinci.split("B. KEGIATAN INTI")[1]?.split("C. KEGIATAN PENUTUP")[0]
+                                            : rinci
                                           : rpp.langkah_pembelajaran?.kegiatan_inti_mendalam;
                                         return txt ? txt.trim() : "Kerja kelompok diskusi kolaboratif menggunakan panduan LKPD secara mandiri.";
                                       })()}
@@ -3927,10 +4006,11 @@ Kunci Jawaban & Pembahasan Detil:
                                     </span>
                                     <div className="pl-3 mt-0.5 font-medium text-[11px] text-zinc-700 whitespace-pre-line leading-relaxed border-l border-zinc-200">
                                       {(() => {
-                                        const txt = magicStudioOutput
-                                          ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.includes("C. KEGIATAN PENUTUP")
-                                            ? magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci.split("C. KEGIATAN PENUTUP")[1]
-                                            : magicStudioOutput.rpp_merdeka_formal.langkah_pembelajaran_rinci
+                                        const rinci = magicStudioOutput?.rpp_merdeka_formal?.langkah_pembelajaran_rinci;
+                                        const txt = rinci
+                                          ? rinci.includes("C. KEGIATAN PENUTUP")
+                                            ? rinci.split("C. KEGIATAN PENUTUP")[1]
+                                            : rinci
                                           : rpp.langkah_pembelajaran?.kegiatan_penutup;
                                         return txt ? txt.trim() : "Evaluasi formatif, kesimpulan bersama, instruksi pekerjaan rumah, doa penutup.";
                                       })()}
@@ -4054,12 +4134,16 @@ Kunci Jawaban & Pembahasan Detil:
                                 <div className="mt-10 grid grid-cols-2 gap-8 text-[11.5px] font-sans pt-6 border-t border-dashed border-zinc-300 font-bold uppercase select-none">
                                   <div className="text-center space-y-14">
                                     <div>
-                                      <p className="text-zinc-505 mb-0.5 text-[9.5px]">Mengetahui,</p>
-                                      <p className="text-black font-extrabold">KEPALA SEKOLAH {profileSchool}</p>
+                                      <p className="text-zinc-500 mb-0.5 text-[9.5px]">Mengetahui,</p>
+                                      <p className="text-black font-extrabold">
+                                        {namaKepalaSekolah || `KEPALA SEKOLAH`}
+                                      </p>
+                                      <p className="text-[9px] text-zinc-500 mt-0.5">
+                                        NIP. {nipKepalaSekolah || "................................"}
+                                      </p>
                                     </div>
                                     <div>
                                       <p className="text-black font-extrabold">___________________________</p>
-                                      <p className="text-zinc-500 text-[9px] mt-0.5">NIP / JABATAN SEKOLAH</p>
                                     </div>
                                   </div>
                                   <div className="text-center space-y-14">
@@ -4102,59 +4186,81 @@ Kunci Jawaban & Pembahasan Detil:
                         </div>
                       )}
                       <div className="z-10 relative flex-1 flex flex-col">
+                      {/* Kop surat — pakai gambar jika ada, fallback ke teks nama sekolah */}
+                      {kopSuratImage ? (
+                        <div className="text-center pb-4 mb-4 border-b-4 border-double border-black">
+                          <img
+                            src={kopSuratImage}
+                            alt="Kop Sekolah"
+                            className="max-h-[90px] max-w-full mx-auto object-contain"
+                          />
+                        </div>
+                      ) : (
                         <div className={`text-center pb-4 mb-6 ${
-                          pdfKopStyle === "colored_border" 
-                            ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]" 
-                            : pdfKopStyle === "minimalist" 
-                              ? "border-b border-gray-300" 
+                          pdfKopStyle === "colored_border"
+                            ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]"
+                            : pdfKopStyle === "minimalist"
+                              ? "border-b border-gray-300"
                               : "border-b-4 border-double border-black"
                         }`}>
-                          <h2 className={`font-black text-[15px] uppercase tracking-wider ${pdfColorMode === "colored" ? "text-blue-900" : "text-black"}`}>{profileSchool}</h2>
-                          <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">TERAKREDITASI NASIONAL • KOMUNITAS GURU MERDEKA</p>
+                          <h2 className={`font-black text-[15px] uppercase tracking-wider ${
+                            pdfColorMode === "colored" ? "text-blue-900" : "text-black"
+                          }`}>{profileSchool || "NAMA SEKOLAH"}</h2>
+                          <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">
+                            {kotaSekolah || "KOTA SEKOLAH"}
+                          </p>
                           <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
                             <div>GURU: <span className="text-black font-black">{profileName}</span></div>
-                            <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "BELUM DIATUR"}</span></div>
+                            <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "—"}</span></div>
                           </div>
                         </div>
-                        <div className="text-center mb-6 space-y-1">
-                          <h3 className="text-[13px] font-black uppercase tracking-wider text-black">
-                            CAPAIAN PEMBELAJARAN &amp; ALUR TUJUAN PEMBELAJARAN (TP &amp; ATP)
-                          </h3>
-                          <p className="text-[9px] text-zinc-650 font-bold uppercase tracking-wide font-sans">
-                            STANDARISASI KURIKULUM MERDEKA BELAJAR TERPADU 2026
-                          </p>
-                        </div>
-                        <div className="space-y-4 text-left text-zinc-805">
-                          {activeResult ? (
-                            renderStepwiseContent(activeResult)
-                          ) : (
-                            <div className="space-y-4">
-                              <div className="border border-black p-4 rounded-xl space-y-2">
-                                <h4 className="font-bold text-xs uppercase border-b border-black pb-1">I. Capaian Pembelajaran &amp; Tujuan Pembelajaran (TP)</h4>
-                                <p className="whitespace-pre-line leading-relaxed text-[11.5px] text-zinc-700 font-semibold">
-                                  {magicStudioOutput ? magicStudioOutput.rpp_merdeka_formal.tujuan_pembelajaran : rpp.komponen_inti?.tujuan_pembelajaran}
-                                </p>
-                              </div>
-                              <div className="border border-black p-4 rounded-xl space-y-2">
-                                <h4 className="font-bold text-xs uppercase border-b border-black pb-1">II. Alur Tujuan Pembelajaran (ATP) Rekomendasi</h4>
-                                <p className="whitespace-pre-line leading-relaxed text-[11.5px] text-zinc-700 font-semibold">
-                                  {rpp.komponen_inti?.alur_tujuan_pembelajaran || "AI merekomendasikan alur pembelajaran berjenjang dari pemahaman konsep materi, latihan penyelidikan terbimbing, hingga penulisan refleksi mandiri di akhir kegiatan."}
-                                </p>
-                              </div>
+                      )}
+                      <div className="text-center mb-6 space-y-1">
+                        <h3 className="text-[13px] font-black uppercase tracking-wider text-black">
+                          CAPAIAN PEMBELAJARAN &amp; ALUR TUJUAN PEMBELAJARAN (TP &amp; ATP)
+                        </h3>
+                        <p className="text-[9px] text-zinc-650 font-bold uppercase tracking-wide font-sans">
+                          STANDARISASI KURIKULUM MERDEKA BELAJAR TERPADU 2026
+                        </p>
+                      </div>
+                      <div className="space-y-4 text-left text-zinc-805">
+                        {activeResult ? (
+                          <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-slate-800 font-sans">
+                            {activeResult}
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="border border-black p-4 rounded-xl space-y-2">
+                              <h4 className="font-bold text-xs uppercase border-b border-black pb-1">I. Capaian Pembelajaran &amp; Tujuan Pembelajaran (TP)</h4>
+                              <p className="whitespace-pre-line leading-relaxed text-[11.5px] text-zinc-700 font-semibold">
+                                {magicStudioOutput ? magicStudioOutput.rpp_merdeka_formal.tujuan_pembelajaran : rpp.komponen_inti?.tujuan_pembelajaran}
+                              </p>
                             </div>
-                          )}
-                        </div>
-                        {pdfShowSignature && (
-                          <div className="mt-10 grid grid-cols-2 gap-8 text-[11.5px] font-sans pt-6 border-t border-dashed border-zinc-300 font-bold uppercase select-none">
-                            <div className="text-center space-y-14">
-                              <div>
-                                <p className="text-zinc-[#FF6B35] mb-0.5 text-[9.5px]">Mengetahui,</p>
-                                <p className="text-black font-extrabold">KEPALA SEKOLAH {profileSchool}</p>
-                              </div>
-                              <div>
-                                <p className="text-black font-extrabold">___________________________</p>
-                              </div>
+                            <div className="border border-black p-4 rounded-xl space-y-2">
+                              <h4 className="font-bold text-xs uppercase border-b border-black pb-1">II. Alur Tujuan Pembelajaran (ATP) Rekomendasi</h4>
+                              <p className="whitespace-pre-line leading-relaxed text-[11.5px] text-zinc-700 font-semibold">
+                                {rpp.komponen_inti?.alur_tujuan_pembelajaran || "AI merekomendasikan alur pembelajaran berjenjang dari pemahaman konsep materi, latihan penyelidikan terbimbing, hingga penulisan refleksi mandiri di akhir kegiatan."}
+                              </p>
                             </div>
+                          </div>
+                        )}
+                      </div>
+                      {pdfShowSignature && (
+                        <div className="mt-10 grid grid-cols-2 gap-8 text-[11.5px] font-sans pt-6 border-t border-dashed border-zinc-300 font-bold uppercase select-none">
+                          <div className="text-center space-y-14">
+                            <div>
+                              <p className="text-zinc-[#FF6B35] mb-0.5 text-[9.5px]">Mengetahui,</p>
+                              <p className="text-black font-extrabold">
+                                {namaKepalaSekolah || `KEPALA SEKOLAH`}
+                              </p>
+                              <p className="text-[9px] text-zinc-500 mt-0.5">
+                                NIP. {nipKepalaSekolah || "................................"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-black font-extrabold">___________________________</p>
+                            </div>
+                          </div>
                             <div className="text-center space-y-14">
                               <div>
                                 <p className="text-zinc-505 mb-0.5 text-[9.5px]">Dibuat Oleh,</p>
@@ -4192,27 +4298,44 @@ Kunci Jawaban & Pembahasan Detil:
                         </div>
                       )}
                       <div className="z-10 relative flex-1 flex flex-col font-sans">
-                        <div className={`text-center pb-4 mb-6 ${
-                          pdfKopStyle === "colored_border" 
-                            ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]" 
-                            : pdfKopStyle === "minimalist" 
-                              ? "border-b border-gray-300" 
-                              : "border-b-4 border-double border-black"
-                        }`}>
-                          <h2 className={`font-black text-[15px] uppercase tracking-wider ${pdfColorMode === "colored" ? "text-blue-900" : "text-black"}`}>{profileSchool}</h2>
-                          <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">TERAKREDITASI NASIONAL • KOMUNITAS GURU MERDEKA</p>
-                          <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
-                            <div>GURU: <span className="text-black font-black">{profileName}</span></div>
-                            <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "BELUM DIATUR"}</span></div>
+                        {/* Kop surat — pakai gambar jika ada, fallback ke teks nama sekolah */}
+                        {kopSuratImage ? (
+                          <div className="text-center pb-4 mb-4 border-b-4 border-double border-black">
+                            <img
+                              src={kopSuratImage}
+                              alt="Kop Sekolah"
+                              className="max-h-[90px] max-w-full mx-auto object-contain"
+                            />
                           </div>
-                        </div>
+                        ) : (
+                          <div className={`text-center pb-4 mb-6 ${
+                            pdfKopStyle === "colored_border"
+                              ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]"
+                              : pdfKopStyle === "minimalist"
+                                ? "border-b border-gray-300"
+                                : "border-b-4 border-double border-black"
+                          }`}>
+                            <h2 className={`font-black text-[15px] uppercase tracking-wider ${
+                              pdfColorMode === "colored" ? "text-blue-900" : "text-black"
+                            }`}>{profileSchool || "NAMA SEKOLAH"}</h2>
+                            <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">
+                              {kotaSekolah || "KOTA SEKOLAH"}
+                            </p>
+                            <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
+                              <div>GURU: <span className="text-black font-black">{profileName}</span></div>
+                              <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "—"}</span></div>
+                            </div>
+                          </div>
+                        )}
                         <div className="text-center mb-5 border-2 border-dashed border-black p-2 font-mono">
                           <h4 className="font-black text-black">LEMBAR KERJA PESERTA DIDIK (LKPD)</h4>
                           <p className="text-[10px] text-zinc-650 font-bold">DISALURKAN UNTUK KEGIATAN DISKUSI MANDIRI SISWA</p>
                         </div>
                         <div className="space-y-4 text-left text-zinc-800">
                           {activeResult ? (
-                            renderStepwiseContent(activeResult)
+                            <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-slate-800 font-sans">
+                              {activeResult}
+                            </div>
                           ) : (
                             <>
                               <div className="bg-slate-50 border border-slate-200 p-3 grid grid-cols-2 gap-4 text-[11px] font-medium rounded">
@@ -4255,7 +4378,12 @@ Kunci Jawaban & Pembahasan Detil:
                             <div className="text-center space-y-14">
                               <div>
                                 <p className="text-zinc-[#FF6B35] mb-0.5 text-[9.5px]">Mengetahui,</p>
-                                <p className="text-black font-extrabold">KEPALA SEKOLAH {profileSchool}</p>
+                                <p className="text-black font-extrabold">
+                                  {namaKepalaSekolah || `KEPALA SEKOLAH`}
+                                </p>
+                                <p className="text-[9px] text-zinc-500 mt-0.5">
+                                  NIP. {nipKepalaSekolah || "................................"}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-black font-extrabold">___________________________</p>
@@ -4298,20 +4426,35 @@ Kunci Jawaban & Pembahasan Detil:
                         </div>
                       )}
                       <div className="z-10 relative flex-1 flex flex-col font-sans">
-                        <div className={`text-center pb-4 mb-6 ${
-                          pdfKopStyle === "colored_border" 
-                            ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]" 
-                            : pdfKopStyle === "minimalist" 
-                              ? "border-b border-gray-300" 
-                              : "border-b-4 border-double border-black"
-                        }`}>
-                          <h2 className={`font-black text-[15px] uppercase tracking-wider ${pdfColorMode === "colored" ? "text-blue-900" : "text-black"}`}>{profileSchool}</h2>
-                          <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">TERAKREDITASI NASIONAL • KOMUNITAS GURU MERDEKA</p>
-                          <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
-                            <div>GURU: <span className="text-black font-black">{profileName}</span></div>
-                            <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "BELUM DIATUR"}</span></div>
+                        {/* Kop surat — pakai gambar jika ada, fallback ke teks nama sekolah */}
+                        {kopSuratImage ? (
+                          <div className="text-center pb-4 mb-4 border-b-4 border-double border-black">
+                            <img
+                              src={kopSuratImage}
+                              alt="Kop Sekolah"
+                              className="max-h-[90px] max-w-full mx-auto object-contain"
+                            />
                           </div>
-                        </div>
+                        ) : (
+                          <div className={`text-center pb-4 mb-6 ${
+                            pdfKopStyle === "colored_border"
+                              ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]"
+                              : pdfKopStyle === "minimalist"
+                                ? "border-b border-gray-300"
+                                : "border-b-4 border-double border-black"
+                          }`}>
+                            <h2 className={`font-black text-[15px] uppercase tracking-wider ${
+                              pdfColorMode === "colored" ? "text-blue-900" : "text-black"
+                            }`}>{profileSchool || "NAMA SEKOLAH"}</h2>
+                            <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">
+                              {kotaSekolah || "KOTA SEKOLAH"}
+                            </p>
+                            <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
+                              <div>GURU: <span className="text-black font-black">{profileName}</span></div>
+                              <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "—"}</span></div>
+                            </div>
+                          </div>
+                        )}
                         <div className="text-center mb-6 space-y-1">
                           <h3 className="text-[13px] font-black uppercase tracking-wider text-black">
                             INSTRUMEN ASESMEN &amp; KISI-KISI EVALUASI
@@ -4322,7 +4465,9 @@ Kunci Jawaban & Pembahasan Detil:
                         </div>
                         <div className="space-y-4 text-left text-zinc-800">
                           {activeResult ? (
-                            renderStepwiseContent(activeResult)
+                            <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-slate-800 font-sans">
+                              {activeResult}
+                            </div>
                           ) : (
                             <>
                               <div className="space-y-2">
@@ -4379,7 +4524,12 @@ Kunci Jawaban & Pembahasan Detil:
                             <div className="text-center space-y-14">
                               <div>
                                 <p className="text-zinc-[#FF6B35] mb-0.5 text-[9.5px]">Mengetahui,</p>
-                                <p className="text-black font-extrabold">KEPALA SEKOLAH {profileSchool}</p>
+                                <p className="text-black font-extrabold">
+                                  {namaKepalaSekolah || `KEPALA SEKOLAH`}
+                                </p>
+                                <p className="text-[9px] text-zinc-500 mt-0.5">
+                                  NIP. {nipKepalaSekolah || "................................"}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-black font-extrabold">___________________________</p>
@@ -4422,20 +4572,35 @@ Kunci Jawaban & Pembahasan Detil:
                         </div>
                       )}
                       <div className="z-10 relative flex-1 flex flex-col font-sans">
-                        <div className={`text-center pb-4 mb-6 ${
-                          pdfKopStyle === "colored_border" 
-                            ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]" 
-                            : pdfKopStyle === "minimalist" 
-                              ? "border-b border-gray-300" 
-                              : "border-b-4 border-double border-black"
-                        }`}>
-                          <h2 className={`font-black text-[15px] uppercase tracking-wider ${pdfColorMode === "colored" ? "text-blue-900" : "text-black"}`}>{profileSchool}</h2>
-                          <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">TERAKREDITASI NASIONAL • KOMUNITAS GURU MERDEKA</p>
-                          <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
-                            <div>GURU: <span className="text-black font-black">{profileName}</span></div>
-                            <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "BELUM DIATUR"}</span></div>
+                        {/* Kop surat — pakai gambar jika ada, fallback ke teks nama sekolah */}
+                        {kopSuratImage ? (
+                          <div className="text-center pb-4 mb-4 border-b-4 border-double border-black">
+                            <img
+                              src={kopSuratImage}
+                              alt="Kop Sekolah"
+                              className="max-h-[90px] max-w-full mx-auto object-contain"
+                            />
                           </div>
-                        </div>
+                        ) : (
+                          <div className={`text-center pb-4 mb-6 ${
+                            pdfKopStyle === "colored_border"
+                              ? "border-t-4 border-[#0D1D34] border-b-2 border-[#FF6B35]"
+                              : pdfKopStyle === "minimalist"
+                                ? "border-b border-gray-300"
+                                : "border-b-4 border-double border-black"
+                          }`}>
+                            <h2 className={`font-black text-[15px] uppercase tracking-wider ${
+                              pdfColorMode === "colored" ? "text-blue-900" : "text-black"
+                            }`}>{profileSchool || "NAMA SEKOLAH"}</h2>
+                            <p className="text-[9.5px] text-zinc-650 font-extrabold uppercase mt-0.5">
+                              {kotaSekolah || "KOTA SEKOLAH"}
+                            </p>
+                            <div className="grid grid-cols-2 gap-4 text-left text-[10px] text-zinc-700 mt-3 border-t border-zinc-300 pt-2 font-bold uppercase">
+                              <div>GURU: <span className="text-black font-black">{profileName}</span></div>
+                              <div className="text-right">NIP: <span className="text-black font-black">{profileNip || "—"}</span></div>
+                            </div>
+                          </div>
+                        )}
                         <div className="text-center mb-6 space-y-1">
                           <h3 className="text-[13px] font-black text-red-700 uppercase tracking-wider">
                             KISI-KISI &amp; NASKAH SOAL UJIAN KELAS
@@ -4446,7 +4611,9 @@ Kunci Jawaban & Pembahasan Detil:
                         </div>
                         <div className="space-y-4 text-left text-zinc-805">
                           {activeResult ? (
-                            renderStepwiseContent(activeResult)
+                            <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-slate-800 font-sans">
+                              {activeResult}
+                            </div>
                           ) : (
                             <div className="space-y-4">
                               <p className="font-bold text-[12px] uppercase">Butir Soal Pilihan Ganda ({soalList.length} Butir):</p>
@@ -4468,7 +4635,12 @@ Kunci Jawaban & Pembahasan Detil:
                             <div className="text-center space-y-14">
                               <div>
                                 <p className="text-zinc-[#FF6B35] mb-0.5 text-[9.5px]">Mengetahui,</p>
-                                <p className="text-black font-extrabold">KEPALA SEKOLAH {profileSchool}</p>
+                                <p className="text-black font-extrabold">
+                                  {namaKepalaSekolah || `KEPALA SEKOLAH`}
+                                </p>
+                                <p className="text-[9px] text-zinc-500 mt-0.5">
+                                  NIP. {nipKepalaSekolah || "................................"}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-black font-extrabold">___________________________</p>

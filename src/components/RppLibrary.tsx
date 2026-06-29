@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { RppTemplate } from "../templates";
 import { GenerateResult, SUBJECTS, CLASS_LEVELS } from "../types";
+import { translateErrorMessage } from "../App";
 
 interface RppLibraryProps {
   onApplyTemplate: (
@@ -226,7 +227,13 @@ export function RppLibrary({ onApplyTemplate, onBackToDashboard, currentSubject 
         })
       });
       
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        throw new Error(`Respon server tidak valid (Status: ${res.status}). Silakan coba sesaat lagi.`);
+      }
+      
       if (!res.ok) throw new Error(data.error || "Gagal generate topik.");
       
       // Parse topik dari AI dan buat array RppTemplate
@@ -269,7 +276,7 @@ export function RppLibrary({ onApplyTemplate, onBackToDashboard, currentSubject 
       setStarterTemplates(generated);
       setStarterGenerated(true);
     } catch (err: any) {
-      setStarterError(err.message || "Terjadi kesalahan saat generate topik.");
+      setStarterError(translateErrorMessage(err));
     } finally {
       setIsLoadingStarters(false);
     }
@@ -455,7 +462,7 @@ export function RppLibrary({ onApplyTemplate, onBackToDashboard, currentSubject 
 
         <div className="space-y-3 relative z-10 w-full md:w-auto">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white font-sans leading-none flex items-center gap-2">
-            📚 Dokumen & Bank RPP Saya
+            <BookOpen className="w-5 h-5 text-indigo-300 animate-pulse shrink-0" /> Dokumen & Bank RPP Saya
           </h1>
           <p className="text-xs sm:text-sm text-slate-100 font-black max-w-xl leading-relaxed">
             Topik RPP otomatis sesuai mata pelajaran kamu, atau simpan hasil generate AI ke bank RPP pribadi.

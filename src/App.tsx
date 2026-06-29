@@ -15,6 +15,8 @@ import {
   MessageSquare, 
   Plus, 
   Loader2,
+  Send,
+  Bot,
   Calendar,
   Clock,
   CloudLightning,
@@ -42,10 +44,28 @@ import {
   Trophy,
   Save,
   RefreshCw,
-  Search
+  Search,
+  Home,
+  FileEdit,
+  Library,
+  CalendarCheck,
+  BookOpenCheck,
+  Compass,
+  Zap,
+  ClipboardList,
+  GraduationCap,
+  BookMarked,
+  BarChart3,
+  FilePlus2,
+  Download,
+  Printer,
+  PenLine,
+  FlaskConical,
+  Settings,
+  Rocket
 } from "lucide-react";
 
-import { GenerateResult, ImageUpload, CLASS_LEVELS, SUBJECTS } from "./types";
+import { GenerateResult, ImageUpload, CLASS_LEVELS, SUBJECTS, RppVersion } from "./types";
 import { DEFAULT_INITIAL_RESULT, TEACHER_PRESETS, LOADING_QUOTES } from "./data";
 import { AbsensiBulanan } from "./components/AbsensiBulanan";
 import { RppView } from "./components/RppView";
@@ -54,6 +74,7 @@ import { LokerTugas } from "./components/LokerTugas";
 import { ProfileModal } from "./components/ProfileModal";
 import { RppFormattingGuide } from "./components/RppFormattingGuide";
 import { RppLibrary } from "./components/RppLibrary";
+import BetaGuideView from "./components/BetaGuideView";
 import { RPP_TEMPLATES } from "./templates";
 import { motion, AnimatePresence } from "motion/react";
 // @ts-ignore
@@ -67,6 +88,33 @@ import {
 import { saveAs } from "file-saver";
 
 // Helper functions to get initial attendance and grades based on activeKelas
+export function translateErrorMessage(err: any): string {
+  if (!err) return "Terjadi kesalahan sistem internal. Silakan coba lagi.";
+  const msg = typeof err === "string" ? err : (err.message || "");
+  const lower = msg.toLowerCase();
+  
+  if (lower.includes("profil saya") || lower.includes("personal api key") || (lower.includes("kunci api") && lower.includes("tidak valid"))) {
+    return msg;
+  }
+  if (lower.includes("fetch") || lower.includes("network") || lower.includes("failed to fetch")) {
+    return "Gangguan koneksi internet. Silakan periksa jaringan Anda dan coba lagi.";
+  }
+  if (lower.includes("api_key") || lower.includes("api key") || lower.includes("credential") || lower.includes("auth")) {
+    return "Kredensial atau Kunci API tidak valid. Silakan hubungi admin atau periksa pengaturan akun Anda.";
+  }
+  if (lower.includes("read properties") || lower.includes("cannot read") || lower.includes("undefined") || lower.includes("null") || lower.includes("is not safe") || lower.includes("not a function")) {
+    return "Gagal memproses data karena format data belum sesuai. Silakan coba sesuaikan topik atau materi input Anda.";
+  }
+  if (lower.includes("quota") || lower.includes("exhausted") || lower.includes("limit") || lower.includes("rate limit") || lower.includes("429")) {
+    return "Batas pemakaian layanan (kuota AI) telah tercapai. Silakan coba sesaat lagi, atau pasang API Key pribadi Anda di tab Profil untuk akses super lancar tanpa hambatan.";
+  }
+  if (lower.includes("timeout") || lower.includes("timed out")) {
+    return "Waktu tunggu habis karena sistem sedang sibuk. Silakan sederhanakan input Anda dan coba beberapa saat lagi.";
+  }
+  
+  return msg || "Terjadi kesalahan tak terduga dalam memproses permintaan Anda.";
+}
+
 function getHashCode(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -789,6 +837,7 @@ export default function App() {
   const [searchQueryGlobal, setSearchQueryGlobal] = useState<string>("");
   const [searchFilterCategory, setSearchFilterCategory] = useState<"semua" | "siswa" | "rpp" | "jurnal">("semua");
   const dashboardSearchRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [isDashboardDropdownOpen, setIsDashboardDropdownOpen] = useState<boolean>(false);
   
   // Immersive student detail card inside the search modal
@@ -1309,11 +1358,11 @@ export default function App() {
   };
 
   // Screen management
-  const [currentScreen, setCurrentScreen] = useState<"home" | "studio" | "studio_modular" | "absensi" | "loker" | "perpustakaan" | "account">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "studio" | "absensi" | "loker" | "perpustakaan" | "account" | "beta_guide">("home");
   const [sfxEnabled, setSfxEnabled] = useState<boolean>(() => localStorage.getItem("GP_SFX_ENABLED") !== "false");
-  const [activeModularTab, setActiveModularTab] = useState<"tp_atp" | "modul_ajar" | "lkpd" | "asesmen" | "soal_ujian">("tp_atp");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [mobilePane, setMobilePane] = useState<"input" | "result">("input");
+  const [isFocusView, setIsFocusView] = useState<boolean>(false);
   
   // Dropdown inputs
   const [selectedRole, setSelectedRole] = useState<"sd" | "agama" | "smp_sma" | null>(() => {
@@ -1697,6 +1746,43 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
     }
   });
 
+  const [lastAutoSaved, setLastAutoSaved] = useState<string>(() => {
+    const d = new Date();
+    return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  });
+  const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
+  const [autoSaveActive, setAutoSaveActive] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!autoSaveActive) return;
+
+    const interval = setInterval(() => {
+      try {
+        setIsAutoSaving(true);
+        // Periodic save of the draft material input and configurations
+        localStorage.setItem("grup_material_text", materialText);
+        localStorage.setItem("grup_class_level", classLevel);
+        localStorage.setItem("grup_subject", subject);
+        localStorage.setItem("grup_manual_subject", manualSubject);
+        if (selectedRole) {
+          localStorage.setItem("grup_selected_role", selectedRole);
+        }
+
+        const now = new Date();
+        setLastAutoSaved(now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+
+        // Hide saving flash after short feedback loop
+        setTimeout(() => {
+          setIsAutoSaving(false);
+        }, 1200);
+      } catch (err) {
+        console.error("Auto-Save failed:", err);
+      }
+    }, 15000); // Trigger auto-save every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [autoSaveActive, materialText, classLevel, subject, manualSubject, selectedRole]);
+
   useEffect(() => {
     try {
       localStorage.setItem("grup_material_text", materialText);
@@ -1745,6 +1831,13 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       return "Mendidik dengan hati, membentuk karakter generasi emas bangsa.";
     }
   });
+  const [profileBio, setProfileBio] = useState<string>(() => {
+    try {
+      return localStorage.getItem("grup_profile_bio") || "Guru profesional yang berdedikasi tinggi mengembangkan potensi kreatif siswa dalam proses pembelajaran inovatif Kurikulum Merdeka.";
+    } catch {
+      return "Guru profesional yang berdedikasi tinggi mengembangkan potensi kreatif siswa dalam proses pembelajaran inovatif Kurikulum Merdeka.";
+    }
+  });
   const [isSavingSchool, setIsSavingSchool] = useState(false);
 
   const [expandedAccountSection, setExpandedAccountSection] = useState<string | null>(null);
@@ -1788,6 +1881,14 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       console.error(e);
     }
   }, [profileQuote]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("grup_profile_bio", profileBio);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [profileBio]);
 
   // Google Drive destination link state
   const [driveLink, setDriveLink] = useState<string>("https://drive.google.com/drive/folders/1abc9876xyz_merdeka_rpp_cempaka");
@@ -1868,7 +1969,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
   }, [activeKelas]);
 
   // active generator tabs inside workspace right column
-  const [workspaceTab, setWorkspaceTab] = useState<"rpp" | "video" | "guide">("rpp");
+  const [workspaceTab, setWorkspaceTab] = useState<"rpp" | "video" | "history" | "guide">("rpp");
 
   // Core Result from AI Model
   const [currentResult, setCurrentResult] = useState<GenerateResult>(DEFAULT_INITIAL_RESULT);
@@ -1915,10 +2016,49 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
   const [generating, setGenerating] = useState<boolean>(false);
   const [loadingQuote, setLoadingQuote] = useState<string>("");
   const [generateError, setGenerateError] = useState<string>("");
-  const [chatHistory, setChatHistory] = useState<Array<{role: "user"|"ai", text: string}>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{role: "user"|"ai", text: string}>>(() => {
+    try {
+      const cached = localStorage.getItem("grup_chat_history");
+      return cached ? JSON.parse(cached) : [
+        { role: "ai", text: "Halo Bapak/Ibu Guru! Saya **GURU.AI**, asisten digital pribadi Anda. Ada yang bisa saya bantu hari ini terkait perancangan materi, manajemen kelas, atau Kurikulum Merdeka?" }
+      ];
+    } catch {
+      return [
+        { role: "ai", text: "Halo Bapak/Ibu Guru! Saya **GURU.AI**, asisten digital pribadi Anda. Ada yang bisa saya bantu hari ini terkait perancangan materi, manajemen kelas, atau Kurikulum Merdeka?" }
+      ];
+    }
+  });
 
-  // Studio mode configuration (Instant)
-  const studioMode = "instant";
+  useEffect(() => {
+    try {
+      localStorage.setItem("grup_chat_history", JSON.stringify(chatHistory));
+    } catch (err) {
+      console.error("Failed to save chat history:", err);
+    }
+  }, [chatHistory]);
+
+  const [chatModel, setChatModel] = useState<"gemini-3.5-flash" | "gemini-3.1-pro-preview" | "gemini-3.1-flash-lite">("gemini-3.5-flash");
+  const [chatRole, setChatRole] = useState<"rpp" | "management" | "icebreaking" | "merdeka">("rpp");
+  const [chatTab, setChatTab] = useState<"tanya" | "koreksi">("tanya");
+  const [isChatSending, setIsChatSending] = useState<boolean>(false);
+
+  // Version History system for RPP plans
+  const [rppVersions, setRppVersions] = useState<RppVersion[]>(() => {
+    try {
+      const cached = localStorage.getItem("grup_rpp_version_history");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("grup_rpp_version_history", JSON.stringify(rppVersions));
+    } catch (err) {
+      console.error("Failed to save RPP version history:", err);
+    }
+  }, [rppVersions]);
 
   // History system
   const [savedDrafts, setSavedDrafts] = useState<Array<{
@@ -2006,6 +2146,14 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [revisionPrompt, setRevisionPrompt] = useState<string>("");
   const [revising, setRevising] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 80);
+    }
+  }, [chatHistory, isChatOpen]);
 
   // Guided context tutorials inline under headings
   const [showGuidedTutorial, setShowGuidedTutorial] = useState<boolean>(() => {
@@ -2439,12 +2587,17 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
           siswaData, templateRapor: templateRaporText
         })
       });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        throw new Error(`Respon server tidak valid (Status: ${res.status}). Silakan coba sesaat lagi.`);
+      }
       if (!res.ok) throw new Error(data.error);
       setRaporNarasiResult(data.narasi);
       showToast("✅ Narasi rapor berhasil dibuat!");
     } catch (err: any) {
-      showToast("❌ " + err.message);
+      showToast("❌ " + translateErrorMessage(err));
     } finally {
       setIsGeneratingRapor(false);
     }
@@ -2495,12 +2648,17 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
           jumlah: kuisJumlah
         })
       });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        throw new Error(`Respon server tidak valid (Status: ${res.status}). Silakan coba sesaat lagi.`);
+      }
       if (!res.ok) throw new Error(data.error);
       setKuisResult(data.kuis);
       showToast(`✅ ${kuisJumlah} soal kuis berhasil dibuat!`);
     } catch (err: any) {
-      showToast("❌ " + err.message);
+      showToast("❌ " + translateErrorMessage(err));
     } finally {
       setIsGeneratingKuis(false);
     }
@@ -2508,12 +2666,13 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
   const parseKontenKeDocx = (teks: string): Paragraph[] => {
     if (!teks) return [];
+    const cleanText = (str: string) => str.replace(/<[^>]*>/g, "").replace(/\*\*/g, "");
     return teks.split("\n").map((baris) => {
       const trimmed = baris.trim();
       // Heading level 1: baris diawali #
       if (trimmed.startsWith("# ")) {
         return new Paragraph({
-          text: trimmed.replace(/^# /, ""),
+          text: cleanText(trimmed.replace(/^# /, "")),
           heading: HeadingLevel.HEADING_1,
           spacing: { before: 240, after: 120 },
         });
@@ -2521,7 +2680,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       // Heading level 2: baris diawali ##
       if (trimmed.startsWith("## ")) {
         return new Paragraph({
-          text: trimmed.replace(/^## /, ""),
+          text: cleanText(trimmed.replace(/^## /, "")),
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 200, after: 100 },
         });
@@ -2529,7 +2688,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       // Heading level 3
       if (trimmed.startsWith("### ")) {
         return new Paragraph({
-          text: trimmed.replace(/^### /, ""),
+          text: cleanText(trimmed.replace(/^### /, "")),
           heading: HeadingLevel.HEADING_3,
           spacing: { before: 160, after: 80 },
         });
@@ -2538,7 +2697,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       if (trimmed.startsWith("===") && trimmed.endsWith("===")) {
         return new Paragraph({
           children: [new TextRun({
-            text: trimmed.replace(/={3,}/g, "").trim(),
+            text: cleanText(trimmed.replace(/={3,}/g, "").trim()),
             bold: true,
             underline: { type: UnderlineType.SINGLE },
             size: 24,
@@ -2551,7 +2710,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
         return new Paragraph({
           bullet: { level: 0 },
           children: [new TextRun({
-            text: trimmed.replace(/^[-*] /, ""),
+            text: cleanText(trimmed.replace(/^[-*] /, "")),
             size: 22,
           })],
           spacing: { before: 40, after: 40 },
@@ -2561,7 +2720,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       if (/^\d+\.\s/.test(trimmed)) {
         return new Paragraph({
           numbering: { reference: "default-numbering", level: 0 },
-          children: [new TextRun({ text: trimmed.replace(/^\d+\.\s/, ""), size: 22 })],
+          children: [new TextRun({ text: cleanText(trimmed.replace(/^\d+\.\s/, "")), size: 22 })],
           spacing: { before: 40, after: 40 },
         });
       }
@@ -2569,7 +2728,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
         return new Paragraph({
           children: [new TextRun({
-            text: trimmed.replace(/\*\*/g, ""),
+            text: cleanText(trimmed),
             bold: true, size: 22,
           })],
           spacing: { before: 60, after: 40 },
@@ -2581,7 +2740,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       }
       // Teks biasa
       return new Paragraph({
-        children: [new TextRun({ text: trimmed, size: 22 })],
+        children: [new TextRun({ text: cleanText(trimmed), size: 22 })],
         spacing: { before: 40, after: 40 },
       });
     });
@@ -2817,7 +2976,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       showToast("✅ Dokumen Word (.docx) berhasil diunduh — rapi siap cetak!");
     } catch (err: any) {
       console.error("docx error:", err);
-      showToast("❌ Gagal membuat dokumen: " + err.message);
+      showToast("❌ Gagal membuat dokumen: " + translateErrorMessage(err));
     }
   };
 
@@ -3032,6 +3191,12 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
   // API Execution wrapper & Google Drive Syncing simulation
   const handleGenerate = async () => {
+    if (!profileName.trim() || !profileSchool.trim()) {
+      showToast("⚠️ Profil pendidik belum lengkap! Harap lengkapi Nama Guru dan Nama Sekolah Anda di Menu Profil terlebih dahulu.");
+      setActiveOverlay("profile");
+      return;
+    }
+
     if (!materialText.trim() && !materialImage) {
       showToast("⚠️ Harap isi uraian materi atau unggah foto buku terlebih dahulu!");
       return;
@@ -3085,9 +3250,22 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
       addActivityLog(`Penyusunan RPP & PPT - Kelas ${classLevel} (${finalSubject})`, false);
 
-      // Create a saved draft item
       const now = new Date();
       const draftStamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, "0")}-${now.getDate().toString().padStart(2, "0")} ${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")} WIB`;
+      
+      // Update Version History
+      const firstVer: RppVersion = {
+        id: `version-${Date.now()}`,
+        timestamp: `${now.toLocaleDateString("id-ID")} ${now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB`,
+        result: data,
+        label: `Draf Utama: ${finalSubject} (${classLevel})`,
+        materialText: materialText.trim(),
+        classLevel,
+        subject: finalSubject
+      };
+      setRppVersions(prev => [firstVer, ...prev]);
+
+      // Create a saved draft item
       setSavedDrafts((prev) => [
         {
           id: `draft-${Date.now()}`,
@@ -3116,14 +3294,21 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
     } catch (err: any) {
       console.error(err);
-      setGenerateError(err.message);
-      showToast("❌ Terjadi gangguan: " + err.message);
+      const friendlyErr = translateErrorMessage(err);
+      setGenerateError(friendlyErr);
+      showToast("❌ Terjadi gangguan: " + friendlyErr);
     } finally {
       setGenerating(false);
     }
   };
 
   const handleGenerateDokumen = async (tipeDokumen: DokumenType) => {
+    if (!profileName.trim() || !profileSchool.trim()) {
+      showToast("⚠️ Profil pendidik belum lengkap! Harap lengkapi Nama Guru dan Nama Sekolah Anda di Menu Profil terlebih dahulu.");
+      setActiveOverlay("profile");
+      return;
+    }
+
     if (!materialText.trim() && !materialImage) {
       showToast("⚠️ Isi topik/materi terlebih dahulu!");
       return;
@@ -3260,8 +3445,9 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       showToast(`✅ ${DOKUMEN_LIST.find(d => d.id === tipeDokumen)?.label} berhasil dibuat!`);
       setSelectedDokumen(tipeDokumen);
     } catch (err: any) {
-      showToast("❌ " + err.message);
-      setDokumenError(prev => ({ ...prev, [tipeDokumen]: err.message }));
+      const friendlyErr = translateErrorMessage(err);
+      showToast("❌ " + friendlyErr);
+      setDokumenError(prev => ({ ...prev, [tipeDokumen]: friendlyErr }));
     } finally {
       setGeneratingDokumen(null);
     }
@@ -3547,7 +3733,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
     } catch (err: any) {
       console.error(err);
-      showToast(`❌ Sinkronisasi G-Drive gagal: ${err.message || "Kesalahan jaringan"}`);
+      showToast(`❌ Sinkronisasi G-Drive gagal: ${translateErrorMessage(err)}`);
     } finally {
       setIsSavingAndSyncingFolder(false);
     }
@@ -3635,7 +3821,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
     } catch (err: any) {
       console.error("[Sheets Export Error]", err);
-      showToast(`❌ Gagal sinkronisasi Sheets: ${err.message || err}`);
+      showToast(`❌ Gagal sinkronisasi Sheets: ${translateErrorMessage(err)}`);
     } finally {
       setIsExportingSheets(false);
     }
@@ -3719,9 +3905,73 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
     } catch (err: any) {
       console.error(err);
-      showToast(`❌ Gagal sinkronisasi massal: ${err.message || "Gagal terkoneksi"}`);
+      showToast(`❌ Gagal sinkronisasi massal: ${translateErrorMessage(err)}`);
     } finally {
       setIsSyncingAll(false);
+    }
+  };
+
+  const handleSendChatMessage = async (customText?: string) => {
+    const textToSend = customText !== undefined ? customText : revisionPrompt;
+    if (!textToSend.trim()) return;
+    
+    // Add user message to history
+    const userMsg = { role: "user" as const, text: textToSend };
+    setChatHistory(prev => [...prev, userMsg]);
+    if (customText === undefined) {
+      setRevisionPrompt("");
+    }
+    
+    setIsChatSending(true);
+    playSfx("click");
+    
+    try {
+      // Define system instruction based on role
+      let systemInstruction = "";
+      if (chatRole === "rpp") {
+        systemInstruction = "Anda adalah GURU.AI, Asisten Digital Administrasi Guru tepercaya di Indonesia binaan Kementerian Pendidikan dan Kebudayaan Republik GuruPintar. Anda adalah Spesialis Administrasi RPP. Anda ahli dalam mendesain materi ajar, Tujuan Pembelajaran (TP), Alur Tujuan Pembelajaran (ATP), Lembar Kerja Peserta Didik (LKPD), serta instrumen penilaian Kurikulum Merdeka. Jawablah secara konkret, ramah, antusias, solutif, dan penuh rasa hormat struktural. FORMATTING WAJIB: JANGAN PERNAH gunakan tag HTML atau tanda bintang (asterisk '**' atau '*') untuk mempertebal kata/kalimat. Gunakan huruf KAPITAL (UPPERCASE) atau heading standard (#, ##, ###) tanpa tanda bintang di sekelilingnya untuk penekanan atau judul/subjudul, serta tanda hubung (-) atau penomoran biasa untuk list.";
+      } else if (chatRole === "management") {
+        systemInstruction = "Anda adalah GURU.AI, Asisten Digital Administrasi Guru tepercaya di Indonesia binaan Kementerian Pendidikan dan Kebudayaan Republik GuruPintar. Anda adalah Konsultan Pengelolaan Kelas. Anda sangat ahli dalam memberikan solusi konkret atas perilaku siswa, cara meningkatkan motivasi belajar, menangani siswa pasif, hiperaktif, atau bermasalah, dan menciptakan iklim kelas yang positif serta inklusif. Jawablah secara konkret, ramah, antusias, solutif, dan penuh rasa hormat struktural. FORMATTING WAJIB: JANGAN PERNAH gunakan tag HTML atau tanda bintang (asterisk '**' atau '*') untuk mempertebal kata/kalimat. Gunakan huruf KAPITAL (UPPERCASE) atau heading standard (#, ##, ###) tanpa tanda bintang di sekelilingnya untuk penekanan atau judul/subjudul, serta tanda hubung (-) atau penomoran biasa untuk list.";
+      } else if (chatRole === "icebreaking") {
+        systemInstruction = "Anda adalah GURU.AI, Asisten Digital Administrasi Guru tepercaya di Indonesia binaan Kementerian Pendidikan dan Kebudayaan Republik GuruPintar. Anda adalah Spesialis Ice Breaking & Game Kelas. Anda ahli dalam menciptakan permainan kelas kreatif, yel-yel motivasi, dan kegiatan penyegar suasana belajar di sela-sela pelajaran sesuai fase umur siswa. Berikan panduan langkah-demi-langkah pengerjaan game tersebut secara konkret. Jawablah secara konkret, ramah, antusias, solutif, dan penuh rasa hormat struktural. FORMATTING WAJIB: JANGAN PERNAH gunakan tag HTML atau tanda bintang (asterisk '**' atau '*') untuk mempertebal kata/kalimat. Gunakan huruf KAPITAL (UPPERCASE) atau heading standard (#, ##, ###) tanpa tanda bintang di sekelilingnya untuk penekanan atau judul/subjudul, serta tanda hubung (-) atau penomoran biasa untuk list.";
+      } else if (chatRole === "merdeka") {
+        systemInstruction = "Anda adalah GURU.AI, Asisten Digital Administrasi Guru tepercaya di Indonesia binaan Kementerian Pendidikan dan Kebudayaan Republik GuruPintar. Anda adalah Pakar Regulasi Kurikulum Merdeka. Anda ahli dalam menjelaskan regulasi Kemendikbudristek terbaru, rincian kriteria ketuntasan tujuan pembelajaran (KKTP), profil pelajar Pancasila (P5), serta tata cara pelaksanaan asesmen nasional. Jawablah secara konkret, ramah, antusias, solutif, dan penuh rasa hormat struktural. FORMATTING WAJIB: JANGAN PERNAH gunakan tag HTML atau tanda bintang (asterisk '**' atau '*') untuk mempertebal kata/kalimat. Gunakan huruf KAPITAL (UPPERCASE) atau heading standard (#, ##, ###) tanpa tanda bintang di sekelilingnya untuk penekanan atau judul/subjudul, serta tanda hubung (-) atau penomoran biasa untuk list.";
+      }
+      
+      const payload = {
+        message: textToSend,
+        history: chatHistory,
+        model: chatModel,
+        systemInstruction
+      };
+      
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(teacherApiKey ? { "X-User-API-Key": teacherApiKey } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        let errorMsg = "Gagal memproses pesan Anda.";
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) errorMsg = errData.error;
+        } catch (_) {}
+        throw new Error(errorMsg);
+      }
+      
+      const resData = await response.json();
+      setChatHistory(prev => [...prev, { role: "ai", text: resData.text || "Mohon maaf, saya belum memahami pesan Anda." }]);
+      playSfx("notify");
+    } catch (err: any) {
+      console.error("Chat sending error:", err);
+      setChatHistory(prev => [...prev, { role: "ai", text: `⚠️ **Gagal mengirim pesan:** ${translateErrorMessage(err)}` }]);
+      playSfx("delete");
+    } finally {
+      setIsChatSending(false);
     }
   };
 
@@ -3766,6 +4016,21 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       const data: GenerateResult = await response.json();
       setCurrentResult(data);
       setMobilePane("result");
+
+      // Add revision to Version History
+      const now = new Date();
+      const promptLabel = promptText.length > 40 ? promptText.substring(0, 40) + "..." : promptText;
+      const revisionVer: RppVersion = {
+        id: `version-${Date.now()}`,
+        timestamp: `${now.toLocaleDateString("id-ID")} ${now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB`,
+        result: data,
+        label: `Revisi AI: "${promptLabel}"`,
+        materialText: materialText.trim(),
+        classLevel,
+        subject: finalSubject
+      };
+      setRppVersions(prev => [revisionVer, ...prev]);
+
       setChatHistory(prev => [
         ...prev,
         { role: "user", text: promptText },
@@ -3780,7 +4045,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       }
     } catch (err: any) {
       console.error(err);
-      showToast("❌ Gangguan: " + err.message);
+      showToast("❌ Gangguan: " + translateErrorMessage(err));
     } finally {
       setRevising(false);
     }
@@ -4001,7 +4266,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             {/* Glowing Icon banner */}
             <div className="flex gap-3 pb-3 border-b border-indigo-50 mt-1">
               <span className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-xl shrink-0 border border-indigo-100">
-                🚀
+                <Rocket className="w-5 h-5 text-indigo-600 animate-pulse" />
               </span>
               <div>
                 <h3 className="text-sm font-black text-[#0D1D34] uppercase tracking-wide">Selamat Datang!</h3>
@@ -4060,7 +4325,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       w-64 bg-white border-r border-slate-200
       flex flex-col min-h-screen
       transition-transform duration-300 ease-in-out
-      ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+      ${isFocusView ? "hidden lg:hidden" : isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       no-print
     `}>
 
@@ -4124,25 +4389,35 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       )}
 
       {/* Menu Navigasi */}
-      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-0.5">
         {[
-          { id: "home", icon: "🏠", label: "Beranda" },
-          { id: "studio", icon: "✏️", label: "Buat Perangkat Ajar" },
-          { id: "perpustakaan", icon: "🏛️", label: "Dokumen Saya" },
-          { id: "absensi", icon: "✅", label: "Kehadiran Siswa" },
-          { id: "loker", icon: "📓", label: "Catatan Nilai" },
+          { id: "home", icon: "home", label: "Beranda", color: "text-blue-600", bg: "bg-blue-50" },
+          { id: "studio", icon: "file-pen", label: "Buat Perangkat Ajar", color: "text-violet-600", bg: "bg-violet-50" },
+          { id: "perpustakaan", icon: "library", label: "Dokumen Saya", color: "text-amber-600", bg: "bg-amber-50" },
+          { id: "absensi", icon: "calendar-check", label: "Kehadiran Siswa", color: "text-emerald-600", bg: "bg-emerald-50" },
+          { id: "loker", icon: "book-open-check", label: "Catatan Nilai", color: "text-rose-600", bg: "bg-rose-50" },
+          { id: "beta_guide", icon: "compass", label: "Panduan Beta", color: "text-slate-600", bg: "bg-slate-50" },
         ].map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => { setCurrentScreen(item.id as any); setIsSidebarOpen(false); playSfx("click"); }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-left cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left cursor-pointer ${
               currentScreen === item.id
                 ? "bg-[#EBF3FF] text-[#1E3A8A] font-black"
                 : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             }`}
           >
-            <span className="text-base shrink-0">{item.icon}</span>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+              currentScreen === item.id ? "bg-[#1E3A8A]" : (item as any).bg || "bg-slate-100"
+            }`}>
+              {item.id === "home" && <Home className={`w-3.5 h-3.5 ${currentScreen === item.id ? "text-white" : (item as any).color || "text-slate-600"}`} />}
+              {item.id === "studio" && <FileEdit className={`w-3.5 h-3.5 ${currentScreen === item.id ? "text-white" : (item as any).color || "text-slate-600"}`} />}
+              {item.id === "perpustakaan" && <Library className={`w-3.5 h-3.5 ${currentScreen === item.id ? "text-white" : (item as any).color || "text-slate-600"}`} />}
+              {item.id === "absensi" && <CalendarCheck className={`w-3.5 h-3.5 ${currentScreen === item.id ? "text-white" : (item as any).color || "text-slate-600"}`} />}
+              {item.id === "loker" && <BookOpenCheck className={`w-3.5 h-3.5 ${currentScreen === item.id ? "text-white" : (item as any).color || "text-slate-600"}`} />}
+              {item.id === "beta_guide" && <Compass className={`w-3.5 h-3.5 ${currentScreen === item.id ? "text-white" : (item as any).color || "text-slate-600"}`} />}
+            </div>
             <span>{item.label}</span>
           </button>
         ))}
@@ -4160,7 +4435,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       </nav>
 
       {/* Footer Sidebar */}
-      <div className="p-3 border-t border-slate-100 space-y-0.5">
+      <div className="mt-auto p-3 border-t border-slate-100 bg-white space-y-0.5 shrink-0 z-10">
         <button
           type="button"
           onClick={() => { setCurrentScreen("account" as any); setIsSidebarOpen(false); playSfx("click"); }}
@@ -4170,7 +4445,11 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
               : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
           }`}
         >
-          <span className="text-base shrink-0">👤</span>
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+            currentScreen === "account" ? "bg-[#1E3A8A]" : "bg-slate-100"
+          }`}>
+            <User className={`w-3.5 h-3.5 ${currentScreen === "account" ? "text-white" : "text-slate-600"}`} />
+          </div>
           <span>Profil Saya</span>
         </button>
         <button
@@ -4189,30 +4468,30 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
     <main className="flex-1 min-w-0 overflow-y-auto">
 
       {/* TOP BAR MOBILE — hanya muncul di mobile */}
-      <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 no-print">
+      <div className={`lg:hidden bg-white/95 backdrop-blur-md border-b border-slate-100/80 px-4 py-3.5 flex items-center justify-between sticky top-0 z-30 no-print transition-all ${isFocusView ? "hidden" : ""}`}>
         <button
           type="button"
           onClick={() => setIsSidebarOpen(true)}
-          className="p-1.5 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+          className="p-2 hover:bg-slate-100/80 rounded-xl transition cursor-pointer shrink-0"
           aria-label="Buka menu"
         >
-          <div className="space-y-1 w-5">
-            <span className="block w-5 h-0.5 bg-slate-600 rounded"></span>
-            <span className="block w-5 h-0.5 bg-slate-600 rounded"></span>
-            <span className="block w-5 h-0.5 bg-slate-600 rounded"></span>
+          <div className="space-y-1.5 w-5">
+            <span className="block w-5 h-0.5 bg-slate-700 rounded-full"></span>
+            <span className="block w-3.5 h-0.5 bg-slate-700 rounded-full"></span>
+            <span className="block w-5 h-0.5 bg-slate-700 rounded-full"></span>
           </div>
         </button>
-        <span className="text-sm font-black text-[#0D1D34]">GURUPINTAR<span className="text-[#1E3A8A]">.AI</span></span>
+        <span className="text-xs font-black tracking-[0.15em] text-slate-900 font-sans uppercase">GURUPINTAR<span className="text-indigo-600">.AI</span></span>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => { setIsSearchModalOpen(true); playSfx("click"); }}
-            className="p-1.5 hover:bg-slate-100 rounded-lg transition text-slate-600 cursor-pointer"
+            className="p-2 hover:bg-slate-100/80 rounded-xl transition text-slate-600 cursor-pointer shrink-0"
             aria-label="Cari Cepat"
           >
-            <Search className="w-4 h-4 text-slate-500" />
+            <Search className="w-4 h-4 text-slate-600 stroke-[2.5]" />
           </button>
-          <div className="w-8 h-8 rounded-full bg-[#1E3A8A] text-white font-black flex items-center justify-center text-xs cursor-pointer"
+          <div className="w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-sans font-black flex items-center justify-center text-[10px] cursor-pointer shadow-sm transition shrink-0"
             onClick={() => setCurrentScreen("account" as any)}>
             {profileName.split(" ").map((w: string) => w[0]).filter((c: string) => c && c === c.toUpperCase()).slice(0, 2).join("") || "GP"}
           </div>
@@ -4220,7 +4499,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       </div>
 
       {/* Konten halaman */}
-      <div className="p-6 max-w-7xl mx-auto w-full space-y-6">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6 pb-28 sm:pb-12">
         <AnimatePresence mode="wait">
         
         {/* VIEW 1: DASHBOARD HOME WIDGETS (Unified Premium Layout Matching User Screenshot exactly) */}
@@ -4237,13 +4516,13 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
           >
             
             {/* 🟦 HEADER BLUE CARD (1:1 with user mockup screenshot) */}
-            <div className="bg-gradient-to-r from-[#0F172A] via-[#1E3A8A] to-[#1D4ED8] text-white p-5 rounded-3xl relative overflow-hidden shadow-[0_12px_40px_rgba(30,58,138,0.22)] border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
+            <div className="bg-gradient-to-r from-slate-900 via-[#1E3A8A] to-indigo-900 text-white p-6 rounded-[28px] sm:rounded-[32px] relative overflow-hidden shadow-[0_12px_40px_rgba(30,58,138,0.18)] border border-white/10 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-5 text-left">
               <div className="absolute top-[-40px] right-[-40px] w-48 h-48 bg-blue-400/10 rounded-full blur-2xl pointer-events-none"></div>
               <div className="absolute bottom-[-60px] left-[-30px] w-56 h-56 bg-sky-400/15 rounded-full blur-3xl pointer-events-none"></div>
               
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3.5 relative z-10 w-full md:w-auto">
+              <div className="flex items-start gap-4 relative z-10 w-full md:w-auto">
                 {/* Profile Pic with beautiful status ring */}
-                <div className="relative shrink-0">
+                <div className="relative shrink-0 mt-0.5">
                   <div className="relative inline-block border-2 border-emerald-400 bg-blue-900/45 p-0.5 rounded-full shadow-lg">
                     {profilePic ? (
                       <img 
@@ -4264,45 +4543,42 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                   </div>
                 </div>
 
-                <div className="text-center sm:text-left space-y-1.5 max-w-sm sm:max-w-md">
-                  <div className="flex flex-col sm:flex-row items-center gap-2">
-                    <h2 className="text-lg font-sans font-extrabold text-white leading-tight drop-shadow-sm whitespace-normal break-words">
-                      {profileName.replace(/^(Bapak\s+|Ibu\s+)/i, "") || "Adib Ahdiyat"}
+                <div className="space-y-2 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-sans font-black text-white leading-tight drop-shadow-sm truncate">
+                      {profileName.replace(/^(Bapak\s+|Ibu\s+)/i, "") || "Guru Merdeka"}
                     </h2>
-                    <span className="bg-emerald-500/80 hover:bg-emerald-500 border border-emerald-400/30 text-white font-sans font-black text-[10px] tracking-wide uppercase px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 transition-all">
-                      ✓ Pendidik Merdeka
+                    <span className="bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 font-sans font-black text-[9px] tracking-wide uppercase px-2 py-0.5 rounded-full inline-flex items-center gap-1 transition-all">
+                      ✓ Pendidik
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-[10.5px]">
-                    <span className="bg-[#1E293B]/60 backdrop-blur-xs border border-white/10 px-2.5 py-1 rounded-full font-semibold text-slate-200 inline-flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                    <span className="bg-white/10 backdrop-blur-md border border-white/5 px-2.5 py-1 rounded-xl font-bold text-slate-100 inline-flex items-center gap-1">
                       🏫 {profileSchool}
                     </span>
-                    <span className="bg-[#1E293B]/60 backdrop-blur-xs border border-white/10 px-2.5 py-1 rounded-full font-semibold text-amber-300 inline-flex items-center gap-1">
-                      📌 Kelas Binaan: {activeKelas}
+                    <span className="bg-white/10 backdrop-blur-md border border-white/5 px-2.5 py-1 rounded-xl font-bold text-amber-300 inline-flex items-center gap-1">
+                      📌 Kelas: {activeKelas}
                     </span>
                   </div>
 
-                  {/* Aesthetic Quotes bar */}
-                  <div className="bg-[#0F172A]/48 backdrop-blur-md rounded-2xl px-4 py-1.5 border border-white/5 inline-flex items-center mt-1">
-                    <p className="text-xs font-sans italic text-slate-300 font-medium">
-                      “ {profileQuote || "Bertumbuh 1% Setiap Hari"} ”
-                    </p>
-                  </div>
+                  {/* Quotes/Motivasi Guru */}
+                  <p className="text-[11px] text-amber-200/90 italic leading-relaxed font-sans text-left font-medium select-text">
+                    “ {profileQuote || "Bertumbuh 1% Setiap Hari"} ”
+                  </p>
                 </div>
               </div>
 
               {/* Action Dropdown & Trigger button */}
-              <div className="flex flex-row items-center gap-3 relative z-10 w-full md:w-auto mt-2 md:mt-0 justify-end">
-                {/* Standard White select container matching screenshot dropdown block */}
-                <div className="relative inline-block cursor-pointer">
+              <div className="relative z-10 w-full md:w-auto mt-1 md:mt-0 flex justify-end shrink-0">
+                <div className="relative w-full md:w-auto">
                   <select
                     value={activeKelas}
                     onChange={(e) => {
                       setActiveKelas(e.target.value);
                       showToast(`📌 Kelas aktif diubah ke: ${e.target.value}`);
                     }}
-                    className="bg-white hover:bg-slate-50 text-slate-800 text-xs font-black py-3 px-4.5 pr-10 rounded-xl focus:outline-none appearance-none cursor-pointer shadow-md min-w-[130px] border border-slate-200 transition"
+                    className="w-full md:w-auto bg-white/15 hover:bg-white/20 border border-white/10 text-white text-[11px] font-black py-2.5 px-4 pr-9 rounded-xl focus:outline-none appearance-none cursor-pointer transition shadow-sm"
                   >
                     {kelasList.map(k => (
                       <option key={k} value={k} className="text-slate-800 font-sans font-bold">
@@ -4310,15 +4586,15 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                       </option>
                     ))}
                   </select>
-                  <span className="absolute right-4.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-550 text-[10px]">▼</span>
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-white/75 text-[9px]">▼</span>
                 </div>
               </div>
             </div>
 
-            {/* 🔍 PENCARIAN INSTRUMEN CERDAS (DASHBOARD BOX WIH AUTOCPLETE) */}
+            {/* 🔍 PENCARIAN INSTRUMEN CERDAS (DASHBOARD BOX WIH AUTOCPLETE) - Hidden for cleaner dashboard */}
             <div 
               ref={dashboardSearchRef}
-              className="bg-white p-5 rounded-3xl border border-slate-200 shadow-3xs text-left no-print relative"
+              className="hidden bg-white p-5 rounded-3xl border border-slate-200 shadow-3xs text-left no-print relative"
             >
               <h3 className="text-xs font-sans font-extrabold text-[#0D1D34] mb-1.5 uppercase tracking-wide flex items-center gap-2">
                 🔎 Kolom Pencarian Cerdas &amp; Evaluasi Kilat
@@ -4429,8 +4705,8 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                         {/* STUDENT SEGMENT */}
                         {matchedStudentsList.length > 0 && (
                           <div className="p-3 space-y-1.5 text-left">
-                            <p className="text-[9.5px] font-black text-[#1E3A8A] uppercase tracking-wider px-2 flex items-center gap-1.5">
-                              <span>👤</span> Murid ({matchedStudentsList.length})
+                            <p className="text-[9.5px] font-black text-[#1E3A8A] uppercase tracking-wider px-2 flex items-center gap-2">
+                              <User className="w-3.5 h-3.5 text-[#1E3A8A] shrink-0" /> Murid ({matchedStudentsList.length})
                             </p>
                             <div className="space-y-0.5">
                               {matchedStudentsList.slice(0, 4).map((stud, sidx) => (
@@ -4464,8 +4740,8 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                         {/* RPP SEGMENT */}
                         {matchedRppsList.length > 0 && (
                           <div className="p-3 space-y-1.5 text-left">
-                            <p className="text-[9.5px] font-black text-emerald-700 uppercase tracking-wider px-2 flex items-center gap-1.5">
-                              <span>📋</span> Perangkat Ajar &amp; RPP ({matchedRppsList.length})
+                            <p className="text-[9.5px] font-black text-emerald-700 uppercase tracking-wider px-2 flex items-center gap-2">
+                              <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Perangkat Ajar &amp; RPP ({matchedRppsList.length})
                             </p>
                             <div className="space-y-0.5">
                               {matchedRppsList.slice(0, 4).map((temp, rpidx) => (
@@ -4552,13 +4828,13 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
               {/* COLUMN 1: PINTASAN STUDIO & PORTAL (md:col-span-4) */}
               <div className="md:col-span-4 space-y-4">
                 {/* WIDGET FITUR HARIAN */}
-                <div className="bg-white border border-slate-200/85 p-5 shadow-3xs rounded-3xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">⚡</span>
-                      <h4 className="text-xs font-black text-[#0D1D34] uppercase tracking-wide">Aktivitas Hari Ini</h4>
+                <div className="bg-white border border-slate-100 p-6 shadow-sm rounded-[32px] space-y-5 text-left">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+                    <div className="flex items-center gap-2 text-slate-800">
+                      <Zap className="w-4 h-4 text-indigo-600 fill-indigo-600/10" />
+                      <h4 className="text-sm font-black tracking-tight">Aktivitas Hari Ini</h4>
                     </div>
-                    <span className="text-[9px] text-slate-400 font-medium">
+                    <span className="text-[10px] text-slate-400 font-bold">
                       {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short" })}
                     </span>
                   </div>
@@ -4568,71 +4844,80 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                     const today = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
                     const sudahJurnal = jurnalList.some(j => j.tanggal.includes(today));
                     return !sudahJurnal ? (
-                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-xs font-black text-amber-800">📔 Jurnal hari ini belum diisi</p>
-                          <p className="text-[9px] text-amber-600 font-medium mt-0.5">Catat refleksi mengajar sebelum pulang</p>
+                      <div className="bg-amber-50/75 border border-amber-200/50 rounded-2xl p-4.5 flex items-center justify-between gap-3 shadow-3xs">
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-amber-900">📔 Jurnal Hari Ini Belum Diisi</p>
+                          <p className="text-[10px] text-amber-600 font-bold mt-0.5">Catat refleksi mengajar sebelum pulang</p>
                         </div>
                         <button type="button" onClick={() => { setShowJurnalModal(true); playSfx("click"); }}
-                          className="bg-amber-500 hover:bg-amber-600 text-white font-black text-[9px] px-3 py-1.5 rounded-xl cursor-pointer transition shrink-0">
-                          Isi Sekarang
+                          className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] px-3.5 py-2 rounded-xl cursor-pointer transition shrink-0 shadow-xs">
+                          <PenLine className="w-3.5 h-3.5" />
+                          Refleksi
                         </button>
                       </div>
                     ) : (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-emerald-600 text-[16px]">✅</span>
+                      <div className="bg-emerald-50/75 border border-emerald-200/50 rounded-2xl p-4.5 flex items-center justify-between gap-3 shadow-3xs">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <span className="text-emerald-600 text-lg leading-none shrink-0">✨</span>
                           <div className="min-w-0">
-                            <p className="text-xs font-black text-emerald-800">Jurnal hari ini sudah diisi</p>
-                            <p className="text-[9px] text-emerald-600 font-medium truncate">
+                            <p className="text-xs font-black text-emerald-900">Jurnal Refleksi Terisi</p>
+                            <p className="text-[10px] text-emerald-600 font-bold truncate mt-0.5">
                               {jurnalList.find(j => j.tanggal.includes(today))?.suasana || "😊 Menyenangkan"} · {jurnalList.find(j => j.tanggal.includes(today))?.topik || "Selesai"}
                             </p>
                           </div>
                         </div>
                         <button type="button" onClick={() => { setShowJurnalModal(true); playSfx("click"); }}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] px-2.5 py-1.5 rounded-xl cursor-pointer transition shrink-0">
-                          Isi Lagi
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3 py-2 rounded-xl cursor-pointer transition shrink-0 shadow-xs">
+                          Edit
                         </button>
                       </div>
                     );
                   })()}
 
                   {/* Tombol aksi harian */}
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 gap-2.5">
                     <button type="button"
                       onClick={() => { setShowKuisModal(true); playSfx("click"); }}
-                      className="flex items-center gap-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-black text-xs px-4 py-3 rounded-2xl cursor-pointer transition text-left">
-                      <span className="text-xl shrink-0">⚡</span>
-                      <div>
-                        <div className="font-black">Kuis Dadakan AI</div>
-                        <div className="text-[9px] text-indigo-200 font-medium">Generate soal kuis 5-10 menit instan</div>
+                      className="flex items-center gap-3 bg-slate-50/40 hover:bg-slate-50/90 border border-slate-100 hover:border-violet-200 text-slate-800 text-xs px-4 py-3.5 rounded-2xl cursor-pointer transition-all text-left group shadow-3xs">
+                      <div className="w-10 h-10 rounded-xl bg-violet-100/80 flex items-center justify-center shrink-0 group-hover:bg-violet-200/80 transition-colors">
+                        <Zap className="w-4.5 h-4.5 text-violet-600" />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-black text-slate-900 text-xs">Kuis Dadakan AI</div>
+                        <div className="text-[10px] text-slate-500 font-bold mt-0.5">Materi kuis cepat 5–10 menit luring</div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-violet-500 transition shrink-0" />
                     </button>
 
                     <button type="button"
                       onClick={() => { setCatatanKelasAktif(activeKelas); setShowCatatanModal(true); playSfx("click"); }}
-                      className="flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs px-4 py-3 rounded-2xl cursor-pointer transition text-left">
-                      <span className="text-xl shrink-0">👁️</span>
-                      <div>
-                        <div className="font-black">Catatan Siswa Hari Ini</div>
-                        <div className="text-[9px] text-emerald-100 font-medium">Tandai keaktifan & perkembangan siswa</div>
+                      className="flex items-center gap-3 bg-slate-50/40 hover:bg-slate-50/90 border border-slate-100 hover:border-emerald-200 text-slate-800 text-xs px-4 py-3.5 rounded-2xl cursor-pointer transition-all text-left group shadow-3xs">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100/80 flex items-center justify-center shrink-0 group-hover:bg-emerald-200/80 transition-colors">
+                        <ClipboardList className="w-4.5 h-4.5 text-emerald-600" />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-black text-slate-900 text-xs">Catatan Siswa</div>
+                        <div className="text-[10px] text-slate-500 font-bold mt-0.5">Pantau karakter, sikap, & keaktifan</div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition shrink-0" />
                     </button>
                   </div>
 
                   {/* Jurnal terbaru */}
                   {jurnalList.length > 0 && (
-                    <div className="border-t border-slate-100 pt-3 space-y-2">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wide">Jurnal Terakhir:</p>
-                      {jurnalList.slice(0, 2).map((j, i) => (
-                        <div key={i} className="flex items-start gap-2 py-2 border-b border-slate-50 last:border-0">
-                          <span className="text-base shrink-0">{j.suasana.split(" ")[0]}</span>
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-black text-slate-700 truncate">{j.topik}</p>
-                            <p className="text-[9px] text-slate-400">{j.kelas} · {j.tanggal.split(",")[0]}</p>
+                    <div className="border-t border-slate-100 pt-4 space-y-2.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Refleksi Guru Terbaru</p>
+                      <div className="space-y-2">
+                        {jurnalList.slice(0, 2).map((j, i) => (
+                          <div key={i} className="flex items-start gap-2.5 py-2.5 px-3 rounded-xl bg-slate-50/40 border border-slate-100/85 last:border-slate-100/85">
+                            <span className="text-lg shrink-0 leading-none">{j.suasana.split(" ")[0]}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-black text-slate-800 truncate leading-snug">{j.topik}</p>
+                              <p className="text-[10px] text-slate-400 font-bold mt-0.5">{j.kelas} · {j.tanggal.split(",")[0]}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4640,13 +4925,14 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
               {/* COLUMN 2: RIGHT AGENDA & RECOMMENDATIONS LIST (md:col-span-4) */}
               <div className="md:col-span-4 select-none">
-                <div className="bg-white border border-slate-200/85 p-5.5 rounded-3xl shadow-3xs text-left space-y-4">
+                <div className="bg-white border border-slate-100 p-6 rounded-[32px] shadow-sm text-left space-y-5">
                   
-                  <div className="flex items-center justify-between gap-1.5 border-b border-slate-50 pb-3 flex-wrap">
-                    <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-wider font-sans">
-                      📅 JADWAL HARI INI
-                    </h3>
-                    <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1 max-w-[170px] sm:max-w-none">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3.5">
+                    <div className="flex items-center gap-1.5 text-slate-800">
+                      <Calendar className="w-4 h-4 text-indigo-600 fill-indigo-600/10" />
+                      <h3 className="text-sm font-black tracking-tight">Jadwal Hari Ini</h3>
+                    </div>
+                    <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1 w-full sm:w-auto -mx-1 px-1 sm:mx-0 sm:px-0">
                       {["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"].map((day) => {
                         const isToday = getTodayDayName() === day;
                         const isSelected = selectedJadwalDayFilter === day;
@@ -4658,15 +4944,15 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                               setSelectedJadwalDayFilter(day);
                               playSfx("click");
                             }}
-                            className={`px-1.5 py-0.5 text-[8.5px] font-black rounded transition-all border ${
+                            className={`px-2.5 py-1.5 text-[10px] font-black rounded-lg transition-all border shrink-0 whitespace-nowrap cursor-pointer ${
                               isSelected
-                                ? "bg-indigo-650 text-white border-indigo-700 shadow-2xs"
-                                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                                ? "bg-indigo-600 text-white border-transparent shadow-xs"
+                                : "bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100/80"
                             }`}
                           >
                             {day.slice(0, 3)}
                             {isToday && (
-                              <span className="inline-block w-1 h-1 rounded-full bg-emerald-500 ml-0.5 relative -top-[1px]"></span>
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1 relative -top-[1px]"></span>
                             )}
                           </button>
                         );
@@ -4674,7 +4960,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                     </div>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-3.5">
                     {(() => {
                       const list = jadwalMengajar.filter(
                         (slot) => slot.hari === selectedJadwalDayFilter || (selectedJadwalDayFilter === "Semua" && slot.hari === getTodayDayName())
@@ -4685,11 +4971,11 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
                       if (list.length === 0) {
                         return (
-                          <div className="text-center py-8 text-slate-400 font-sans border border-dashed border-slate-200 rounded-2xl bg-slate-50/40">
-                            <Clock className="w-7 h-7 text-slate-300 mx-auto mb-1.5 animate-pulse" />
-                            <p className="font-extrabold uppercase tracking-wide text-[10px]">TIDAK ADA JADWAL</p>
-                            <p className="text-[9.5px] text-slate-450 mt-0.5 max-w-[200px] mx-auto font-medium">
-                              Tidak ada kelas aktif pada hari {selectedJadwalDayFilter}. SIlakan beralih ke hari lain di atas.
+                          <div className="text-center py-10 text-slate-400 font-sans border border-dashed border-slate-200 rounded-2xl bg-slate-50/40">
+                            <Clock className="w-8 h-8 text-slate-350 mx-auto mb-2 animate-pulse" />
+                            <p className="font-extrabold uppercase tracking-wide text-[10px] text-slate-500">Tidak Ada Jadwal</p>
+                            <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] mx-auto font-medium leading-relaxed">
+                              Tidak ada kelas aktif pada hari {selectedJadwalDayFilter}. Silakan pilih hari lain di atas.
                             </p>
                           </div>
                         );
@@ -4697,7 +4983,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
                       return (
                         <>
-                          <div className="text-[9.5px] font-black text-slate-450 uppercase leading-none tracking-tight pb-0.5 flex items-center gap-1 select-none">
+                          <div className="text-[10px] font-black text-slate-400 uppercase leading-none tracking-wider pb-1 flex items-center gap-1.5 select-none">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                             {selectedJadwalDayFilter} — {formattedDate}
                           </div>
@@ -4705,22 +4991,22 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                           {list.map((slot) => (
                             <div 
                               key={slot.id}
-                              className="p-3.5 border border-slate-150 hover:border-indigo-150 bg-slate-50/20 hover:bg-indigo-50/5 rounded-2xl flex flex-col gap-2.5 transition duration-150 relative overflow-hidden group"
+                              className="p-4 border border-slate-100 hover:border-indigo-100 bg-slate-50/30 hover:bg-indigo-50/10 rounded-2xl flex flex-col gap-3 transition-all duration-200 relative overflow-hidden group shadow-3xs"
                             >
-                              <div className="space-y-1 min-w-0 flex-1 text-left">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[9px] font-mono font-black text-indigo-700 bg-indigo-50/60 border border-indigo-100 px-1.5 py-0.5 rounded leading-none">
+                              <div className="space-y-1.5 min-w-0 flex-1 text-left">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[9.5px] font-mono font-black text-indigo-700 bg-indigo-550/10 border border-indigo-200/20 px-2 py-0.5 rounded-md leading-none">
                                     {slot.jamMulai} - {slot.jamSelesai}
                                   </span>
-                                  <span className="text-[10px] font-extrabold text-slate-700 leading-none">
-                                    {slot.kelas}
+                                  <span className="text-[10.5px] font-black text-slate-700 leading-none">
+                                    Kelas {slot.kelas}
                                   </span>
                                 </div>
-                                <strong className="text-[12px] font-black text-[#0D1D34] font-display block leading-normal mt-1 text-left">
+                                <strong className="text-sm font-black text-slate-900 font-sans block leading-normal text-left">
                                   {slot.mapel}
                                 </strong>
-                                <span className="text-[10px] text-slate-400 block truncate leading-tight">
-                                  Topik: {slot.topik}
+                                <span className="text-[10.5px] text-slate-550 block font-semibold leading-relaxed whitespace-normal break-words">
+                                  Materi: {slot.topik}
                                 </span>
                               </div>
                               <button
@@ -4744,9 +5030,9 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                                   playSfx("chime");
                                   showToast(`⚡ Sukses memuat RPP Merdeka ${slot.kelas} - ${slot.mapel}!`);
                                 }}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-500 text-[10px] font-bold py-1.5 rounded-xl cursor-pointer select-none transition flex items-center justify-center gap-1.5 active:scale-97 shadow-2xs"
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white border border-transparent text-[10px] font-black py-2 rounded-xl cursor-pointer select-none transition-all flex items-center justify-center gap-1.5 active:scale-97 shadow-xs"
                               >
-                                <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+                                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
                                 <span>⚡ Buat RPP</span>
                               </button>
                             </div>
@@ -4763,10 +5049,10 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                       setActiveOverlay("jadwal");
                       playSfx("click");
                     }}
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 font-sans font-black text-xs py-3 rounded-2xl shadow-3xs cursor-pointer transition uppercase text-center focus:outline-none tracking-wide flex items-center justify-center gap-1.5"
+                    className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-100 font-sans font-black text-xs py-3 px-4 rounded-2xl shadow-3xs cursor-pointer transition-all uppercase text-center focus:outline-none tracking-wider flex items-center justify-center gap-2"
                   >
-                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                    Manajemen Jadwal Mengajar ({jadwalMengajar.length})
+                    <Calendar className="w-4 h-4 text-slate-500" />
+                    Atur Jadwal Mengajar ({jadwalMengajar.length})
                   </button>
 
                 </div>
@@ -4776,24 +5062,25 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
               <div className="md:col-span-4 space-y-4">
                 
                 {/* Pilih Kelas Binaan Card */}
-                <div className="bg-white border border-slate-200/85 p-6 rounded-3xl shadow-3xs text-left space-y-4 font-sans focus:outline-none">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h4 className="text-xs font-black text-[#0D1D34] uppercase tracking-wider">
-                      🏫 KELAS AKTIF SAYA
-                    </h4>
+                <div className="bg-white border border-slate-100 p-6 rounded-[32px] shadow-sm text-left space-y-5 font-sans focus:outline-none">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+                    <div className="flex items-center gap-1.5 text-slate-800">
+                      <BookOpen className="w-4 h-4 text-emerald-600" />
+                      <h4 className="text-sm font-black tracking-tight">Kelas Aktif Saya</h4>
+                    </div>
                     <span 
                       onClick={() => {
                         setNewKelasNameInput("");
                         setIsAddKelasModalOpen(true);
                         playSfx("click");
                       }}
-                      className="text-[11px] font-black text-blue-600 hover:text-blue-800 transition cursor-pointer select-none"
+                      className="text-[11px] font-black text-indigo-600 hover:text-indigo-800 transition cursor-pointer select-none"
                     >
                       + Tambah Kelas
                     </span>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {kelasList.map(k => {
                       const isSel = activeKelas === k;
                       return (
@@ -4803,15 +5090,15 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                             setActiveKelas(k);
                             showToast(`📌 Kelas aktif diubah ke: ${k}`);
                           }}
-                          className={`w-full p-3 rounded-xl border text-xs font-extrabold flex items-center justify-between cursor-pointer transition duration-150 ${
+                          className={`w-full p-4 rounded-2xl border text-xs font-black flex items-center justify-between cursor-pointer transition-all duration-200 ${
                             isSel
-                              ? "border-blue-400 bg-blue-50/60 text-blue-900 shadow-3xs"
-                              : "border-slate-150 hover:border-slate-200 bg-slate-50/30 hover:bg-slate-50/80 text-slate-650"
+                              ? "border-indigo-500 bg-indigo-50/50 text-indigo-900 shadow-3xs"
+                              : "border-slate-100 hover:border-slate-200 bg-slate-50/40 hover:bg-slate-50/80 text-slate-600"
                           }`}
                         >
                           <span className="truncate">{k}</span>
                           {isSel && (
-                            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0 ml-2"></span>
+                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 shrink-0 ml-2 animate-pulse"></span>
                           )}
                         </div>
                       );
@@ -4866,494 +5153,6 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
           </motion.div>
         )}
 
-        {/* VIEW: STUDIO MODULAR (REMOVED) */}
-        {false && (
-          <motion.div
-            key="studio_modular"
-            initial={{ opacity: 0, scale: 0.995 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.995 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className={`space-y-6 transition-all duration-305 transform ${
-              isClassChanging ? "scale-[0.985] opacity-40 blur-[0.5px]" : "scale-100 opacity-100 blur-0"
-            }`}
-          >
-            {/* Page Header (Mengadopsi Box Gradient Biru dari Dashboard) */}
-            <div className="bg-gradient-to-r from-[#0F172A] via-[#1E3A8A] to-[#1D4ED8] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden shadow-[0_12px_40px_rgba(30,58,138,0.22)] border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-              <div className="absolute top-[-40px] right-[-40px] w-48 h-48 bg-blue-400/10 rounded-full blur-2xl pointer-events-none"></div>
-              <div className="absolute bottom-[-60px] left-[-30px] w-56 h-56 bg-sky-400/15 rounded-full blur-3xl pointer-events-none"></div>
-
-              <div className="space-y-2 relative z-10 w-full md:w-auto text-left">
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white font-sans leading-none flex items-center gap-2">
-                  ⚡ STUDIO MODULAR (MANDIRI)
-                </h1>
-                <p className="text-[11px] text-blue-200 font-semibold uppercase tracking-wider">
-                  Linear workflow · Hemat Token · Fokus Fleksibilitas Tinggi
-                </p>
-              </div>
-            </div>
-
-            {/* Layout 2 Kolom */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Kolom Kiri: INPUT FORM & TOMBOL GENERATE (Col Span 5) */}
-              <div className="lg:col-span-5 space-y-5 text-left">
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-5">
-                  <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">
-                    ⚙️ Konfigurasi Perangkat Ajar
-                  </h3>
-
-                  {/* Form fields */}
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10.5px] font-black uppercase text-slate-500 block">Tingkat Kelas:</label>
-                      <select
-                        value={classLevel}
-                        onChange={(e) => setClassLevel(e.target.value)}
-                        className="w-full bg-slate-50 text-slate-800 border border-slate-250 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                      >
-                        {getFilteredClasses().map((lvl) => (
-                          <option key={lvl} value={lvl}>{lvl}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10.5px] font-black uppercase text-slate-500 block">Mata Pelajaran:</label>
-                      <select
-                        value={subject}
-                        onChange={(e) => setSubject(e.target.value)}
-                        className="w-full bg-slate-50 text-slate-800 border border-slate-250 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                      >
-                        {getFilteredSubjects().map((subj) => (
-                          <option key={subj} value={subj}>{subj}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Manual Subject Input */}
-                    {(subject === "Input Mapel Manual (Ketik Sendiri)" || subject === "Semua Mata Pelajaran") && (
-                      <div className="flex flex-col gap-1.5 bg-blue-50/50 p-3 rounded-xl border border-blue-100 animate-fade-in">
-                        <label className="text-[10px] uppercase font-black text-blue-800 block">
-                          Nama Mapel Kustom:
-                        </label>
-                        <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            value={manualSubject} 
-                            onChange={(e) => { setManualSubject(e.target.value); setIsMapelSaved(false); }} 
-                            placeholder="Contoh: Kimia, Sosiologi..." 
-                            className="flex-1 bg-white border border-slate-250 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-blue-500" 
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              if (!manualSubject.trim()) {
-                                showToast("⚠️ Ketik mapelnya dulu, Guru!");
-                                return;
-                              }
-                              setIsMapelSaved(true);
-                              showToast("💾 Nama Mapel Kustom dikunci!");
-                            }}
-                            className={`px-3.5 py-1 rounded-xl text-xs font-black border-0 cursor-pointer transition ${
-                              isMapelSaved ? "bg-emerald-600 text-white" : "bg-[#1E3A8A] hover:bg-slate-900 text-white"
-                            }`}
-                          >
-                            {isMapelSaved ? "Saved ✓" : "Kunci"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10.5px] font-black uppercase text-slate-500 block">Metode Pembelajaran:</label>
-                      <select
-                        value={selectedMetode}
-                        onChange={(e) => setSelectedMetode(e.target.value)}
-                        className="w-full bg-slate-50 text-slate-800 border border-slate-250 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                      >
-                        {METODE_LIST.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Topik / Materi Pokok */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10.5px] font-black uppercase text-slate-500 block">
-                        Topik / Materi Pokok:
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={materialText}
-                        onChange={(e) => setMaterialText(e.target.value)}
-                        placeholder="Contoh: Fotosintesis pada tumbuhan, Reaksi kimia asam basa, Pancasila sebagai dasar negara..."
-                        className="w-full bg-slate-50 border border-slate-250 rounded-2xl py-2.5 px-3.5 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition leading-relaxed resize-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tombol-tombol Berurutan */}
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-4">
-                  <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">
-                    🏁 Langkah Penyusunan Perangkat Ajar
-                  </h3>
-                  <p className="text-[10px] text-slate-400 font-semibold">
-                    *Harap lakukan generate langkah demi langkah secara berurutan untuk hasil penyusunan yang maksimal.
-                  </p>
-
-                  <div className="space-y-3">
-                    {/* LANGKAH 1 */}
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50/70 border border-slate-200">
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-black text-slate-800">Langkah 1: TP &amp; ATP</h4>
-                        <p className="text-[9.5px] text-slate-455 mt-0.5 font-bold leading-none">Tujuan &amp; Alur Belajar</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {dokumenResult["tp_atp"] && (
-                          <span className="text-[9.5px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                            Ready ✓
-                          </span>
-                        )}
-                        {!dokumenResult["tp_atp"] && dokumenError["tp_atp"] && (
-                          <span className="text-[9.5px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg">
-                            Beban Padat ⚠️
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleGenerateDokumen("tp_atp");
-                            setActiveModularTab("tp_atp");
-                          }}
-                          disabled={generatingDokumen === "tp_atp"}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black border-0 select-none ${
-                            generatingDokumen === "tp_atp"
-                              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                              : "bg-[#1E3A8A] hover:bg-slate-900 text-white cursor-pointer"
-                          }`}
-                        >
-                          {generatingDokumen === "tp_atp" ? "..." : dokumenResult["tp_atp"] ? "Regen" : "Mulai"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* LANGKAH 2 */}
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50/70 border border-slate-200">
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-black text-slate-800">Langkah 2: Modul Ajar (RPP)</h4>
-                        <p className="text-[9.5px] text-slate-455 mt-0.5 font-bold leading-none">Rencana Kegiatan Inti</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {dokumenResult["modul_ajar"] && (
-                          <span className="text-[9.5px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                            Ready ✓
-                          </span>
-                        )}
-                        {!dokumenResult["modul_ajar"] && dokumenError["modul_ajar"] && (
-                          <span className="text-[9.5px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg">
-                            Beban Padat ⚠️
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleGenerateDokumen("modul_ajar");
-                            setActiveModularTab("modul_ajar");
-                          }}
-                          disabled={generatingDokumen === "modul_ajar"}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black border-0 select-none ${
-                            generatingDokumen === "modul_ajar"
-                              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                              : "bg-[#1E3A8A] hover:bg-slate-900 text-white cursor-pointer"
-                          }`}
-                        >
-                          {generatingDokumen === "modul_ajar" ? "..." : dokumenResult["modul_ajar"] ? "Regen" : "Mulai"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* LANGKAH 3 */}
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50/70 border border-slate-200">
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-black text-slate-800">Langkah 3: LKPD Siswa</h4>
-                        <p className="text-[9.5px] text-slate-455 mt-0.5 font-bold leading-none">Lembar Kerja Aktivitas</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {dokumenResult["lkpd"] && (
-                          <span className="text-[9.5px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                            Ready ✓
-                          </span>
-                        )}
-                        {!dokumenResult["lkpd"] && dokumenError["lkpd"] && (
-                          <span className="text-[9.5px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg">
-                            Beban Padat ⚠️
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleGenerateDokumen("lkpd");
-                            setActiveModularTab("lkpd");
-                          }}
-                          disabled={generatingDokumen === "lkpd"}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black border-0 select-none ${
-                            generatingDokumen === "lkpd"
-                              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                              : "bg-[#1E3A8A] hover:bg-slate-900 text-white cursor-pointer"
-                          }`}
-                        >
-                          {generatingDokumen === "lkpd" ? "..." : dokumenResult["lkpd"] ? "Regen" : "Mulai"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* LANGKAH 4 */}
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50/70 border border-slate-200">
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-black text-slate-800">Langkah 4: Asesmen &amp; Rubrik</h4>
-                        <p className="text-[9.5px] text-slate-455 mt-0.5 font-bold leading-none">Kriteria Penilaian Siswa</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {dokumenResult["asesmen"] && (
-                          <span className="text-[9.5px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                            Ready ✓
-                          </span>
-                        )}
-                        {!dokumenResult["asesmen"] && dokumenError["asesmen"] && (
-                          <span className="text-[9.5px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg">
-                            Beban Padat ⚠️
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleGenerateDokumen("asesmen");
-                            setActiveModularTab("asesmen");
-                          }}
-                          disabled={generatingDokumen === "asesmen"}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black border-0 select-none ${
-                            generatingDokumen === "asesmen"
-                              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                              : "bg-[#1E3A8A] hover:bg-slate-900 text-white cursor-pointer"
-                          }`}
-                        >
-                          {generatingDokumen === "asesmen" ? "..." : dokumenResult["asesmen"] ? "Regen" : "Mulai"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* LANGKAH 5 */}
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50/70 border border-slate-200">
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-black text-slate-800">Langkah 5: Soal Ujian</h4>
-                        <p className="text-[9.5px] text-slate-455 mt-0.5 font-bold leading-none">Paket Butir Soal &amp; Jawaban</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {dokumenResult["soal_ujian"] && (
-                          <span className="text-[9.5px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                            Ready ✓
-                          </span>
-                        )}
-                        {!dokumenResult["soal_ujian"] && dokumenError["soal_ujian"] && (
-                          <span className="text-[9.5px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg">
-                            Beban Padat ⚠️
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleGenerateDokumen("soal_ujian");
-                            setActiveModularTab("soal_ujian");
-                          }}
-                          disabled={generatingDokumen === "soal_ujian"}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black border-0 select-none ${
-                            generatingDokumen === "soal_ujian"
-                              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                              : "bg-[#1E3A8A] hover:bg-slate-900 text-white cursor-pointer"
-                          }`}
-                        >
-                          {generatingDokumen === "soal_ujian" ? "..." : dokumenResult["soal_ujian"] ? "Regen" : "Mulai"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Kolom Kanan: TAB OUTPUT HASIL GENERASI (Col Span 7) */}
-              <div className="lg:col-span-7 flex flex-col space-y-4">
-                {/* Tab Selector Buttons */}
-                <div className="flex items-center flex-wrap gap-2 bg-slate-100 p-2 rounded-2xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setActiveModularTab("tp_atp")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition text-center cursor-pointer select-none truncate border-0 ${
-                      activeModularTab === "tp_atp"
-                        ? "bg-[#1E3A8A] text-white shadow-xs"
-                        : "text-slate-600 hover:text-[#1E3A8A] hover:bg-white"
-                    }`}
-                  >
-                    TP &amp; ATP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveModularTab("modul_ajar")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition text-center cursor-pointer select-none truncate border-0 ${
-                      activeModularTab === "modul_ajar"
-                        ? "bg-[#1E3A8A] text-white shadow-xs"
-                        : "text-slate-600 hover:text-[#1E3A8A] hover:bg-white"
-                    }`}
-                  >
-                    Modul Ajar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveModularTab("lkpd")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition text-center cursor-pointer select-none truncate border-0 ${
-                      activeModularTab === "lkpd"
-                        ? "bg-[#1E3A8A] text-white shadow-xs"
-                        : "text-slate-600 hover:text-[#1E3A8A] hover:bg-white"
-                    }`}
-                  >
-                    LKPD Siswa
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveModularTab("asesmen")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition text-center cursor-pointer select-none truncate border-0 ${
-                      activeModularTab === "asesmen"
-                        ? "bg-[#1E3A8A] text-white shadow-xs"
-                        : "text-slate-600 hover:text-[#1E3A8A] hover:bg-white"
-                    }`}
-                  >
-                    Asesmen
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveModularTab("soal_ujian")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition text-center cursor-pointer select-none truncate border-0 ${
-                      activeModularTab === "soal_ujian"
-                        ? "bg-[#1E3A8A] text-white shadow-xs"
-                        : "text-slate-600 hover:text-[#1E3A8A] hover:bg-white"
-                    }`}
-                  >
-                    Soal Ujian
-                  </button>
-                </div>
-
-                {/* Tab Content Display Area */}
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex-1 flex flex-col min-h-[500px]">
-                  {/* Action buttons on top of output text */}
-                  {dokumenResult[activeModularTab] ? (
-                    <div className="flex justify-between items-center gap-3 border-b border-slate-100 pb-3.5 mb-4 relative z-10 shrink-0">
-                      <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">
-                        Pratinjau Hasil Dokumen:
-                      </span>
-                      <div className="flex gap-2">
-                        {/* Salin Dokumen */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const content = dokumenResult[activeModularTab];
-                            if (content) {
-                              navigator.clipboard.writeText(content);
-                              showToast("📋 Berhasil disalin ke clipboard!");
-                            }
-                          }}
-                          className="bg-slate-50 hover:bg-slate-100 text-slate-650 font-bold px-3 py-1.5 rounded-lg text-[10px] border border-slate-200 transition duration-150 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                          Salin
-                        </button>
-                        {/* Simpan ke Drive Sekolah */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            showToast("☁️ Mengunggah dokumen ke Drive Sekolah secara real-time...");
-                            setTimeout(() => {
-                              showToast(`✅ Berhasil disinkronisasi ke Google Drive di Folder RPP Aktif!`);
-                            }, 1200);
-                          }}
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-extrabold px-3 py-1.5 rounded-lg text-[10px] border border-blue-250 transition duration-150 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Save className="w-3.5 h-3.5" />
-                          Simpan Drive
-                        </button>
-                        {/* Download .DOCX */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            generateDocxRapi(
-                              dokumenResult[activeModularTab] || "",
-                              DOKUMEN_LIST.find((d) => d.id === activeModularTab)?.label || "Dokumen"
-                            );
-                          }}
-                          className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-extrabold px-3 py-1.5 rounded-lg text-[10px] border border-purple-250 transition duration-150 flex items-center gap-1 cursor-pointer"
-                        >
-                          <span>📥</span>
-                          <span>Download .DOCX</span>
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* Document rendering area */}
-                  <div className="text-left flex-1 overflow-y-auto max-h-[600px] select-text">
-                    {dokumenResult[activeModularTab] ? (
-                      <div className="p-1 font-sans text-xs leading-relaxed text-slate-800 space-y-4">
-                        {renderStepwiseContent(dokumenResult[activeModularTab], profileSchool, profileName, profileNip)}
-                      </div>
-                    ) : dokumenError[activeModularTab] ? (
-                      <div className="flex flex-col items-center justify-center h-full py-10 px-6 text-center space-y-5">
-                        <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500 shadow-sm animate-pulse">
-                          <AlertCircle className="w-8 h-8" />
-                        </div>
-                        <div className="max-w-md space-y-3">
-                          <h4 className="text-sm font-black text-rose-700 uppercase tracking-wide">
-                            Gagal Membuat Dokumen
-                          </h4>
-                          <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-3.5 text-left text-[11px] text-rose-950 font-medium leading-relaxed font-sans">
-                            {dokumenError[activeModularTab]}
-                          </div>
-                          <div className="text-left text-[10.5px] text-slate-500 space-y-1 bg-slate-50 border border-slate-100 rounded-xl p-3.5 mt-2">
-                            <strong className="block text-slate-700 font-bold mb-1">💡 Tips Pemecahan Masalah:</strong>
-                            <p>• <strong>Coba Lagi:</strong> Klik tombol generate kembali, biasanya lonjakan beban tuntas dalam beberapa saat.</p>
-                            <p>• <strong>API Key Pribadi:</strong> Masukkan API Key Anda di bagian profil untuk akses super lancar tanpa gangguan antrian.</p>
-                            <p>• <strong>Kurangi Konten:</strong> Bila mengunggah gambar resolusi tinggi, cobalah ketik teks materi secara langsung.</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleGenerateDokumen(activeModularTab)}
-                          className="bg-rose-600 hover:bg-rose-750 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl transition duration-150 shadow-sm flex items-center gap-2 cursor-pointer select-none active:scale-[0.98]"
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                          KLIK UNTUK COBA LAGI
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-full py-12 px-6 text-center text-slate-400 space-y-4">
-                        <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-dashed border-slate-250 flex items-center justify-center text-slate-350 opacity-80 animate-pulse animate-duration-1000">
-                          <FileText className="w-8 h-8" />
-                        </div>
-                        <div className="max-w-md">
-                          <h4 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                            Dokumen Belum Dibuat
-                          </h4>
-                          <p className="text-[11px] text-slate-400 font-medium leading-relaxed mt-2">
-                            Silakan isi form konfigurasi di sebelah kiri dan klik tombol <strong>Mulai / Regen</strong> secara berurutan untuk memproses bagian dokumen ini.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
         {/* VIEW 2: MAGIC STUDIO (RPP & SLIDES) */}
         {currentScreen === "studio" && (
           <motion.div
@@ -5366,29 +5165,52 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
               isClassChanging ? "scale-[0.985] opacity-40 blur-[0.5px]" : "scale-100 opacity-100 blur-0"
             }`}
           >
+            {(!profileName.trim() || !profileSchool.trim()) && (
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-xs font-sans no-print">
+                <div className="flex gap-3">
+                  <span className="text-amber-500 text-lg">⚠️</span>
+                  <div className="text-left">
+                    <p className="font-bold text-amber-900 text-sm">Profil Pendidik Belum Lengkap!</p>
+                    <p className="text-xs text-amber-700 font-medium">
+                      Nama Guru dan Nama Sekolah wajib diatur sebelum dapat memformulasikan perangkat ajar berbasis AI.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setActiveOverlay("profile"); playSfx("click"); }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <span>Lengkapi Profil Sekarang</span>
+                  <span>⚡</span>
+                </button>
+              </div>
+            )}
             
             {/* Page Header (Mengadopsi Box Gradient Biru dari Dashboard) */}
-            <div className="bg-gradient-to-r from-[#0F172A] via-[#1E3A8A] to-[#1D4ED8] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden shadow-[0_12px_40px_rgba(30,58,138,0.22)] border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-              <div className="absolute top-[-40px] right-[-40px] w-48 h-48 bg-blue-400/10 rounded-full blur-2xl pointer-events-none"></div>
-              <div className="absolute bottom-[-60px] left-[-30px] w-56 h-56 bg-sky-400/15 rounded-full blur-3xl pointer-events-none"></div>
+            {!isFocusView && (
+              <div className="bg-gradient-to-r from-[#0F172A] via-[#1E3A8A] to-[#1D4ED8] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden shadow-[0_12px_40px_rgba(30,58,138,0.22)] border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
+                <div className="absolute top-[-40px] right-[-40px] w-48 h-48 bg-blue-400/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="absolute bottom-[-60px] left-[-30px] w-56 h-56 bg-sky-400/15 rounded-full blur-3xl pointer-events-none"></div>
 
-              <div className="space-y-2 relative z-10 w-full md:w-auto text-left font-sans">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                  🪄 Studio Dokumen Ajar
-                </h1>
-                <p className="text-xs text-white/85 font-medium">
-                  Buat RPP, LKPD, Asesmen, Media Belajar, dan Soal Ujian secara otomatis.
-                </p>
-                <div className="flex flex-wrap gap-2.5 pt-1 text-xs font-bold text-white/90 font-sans">
-                  <span>{activeKelas || "Kelas 4A"}</span>
-                  <span>•</span>
-                  <span>{subject || "IPAS"}</span>
+                <div className="space-y-2 relative z-10 w-full md:w-auto text-left font-sans">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse shrink-0" /> Studio Dokumen Ajar
+                  </h1>
+                  <p className="text-xs text-white/85 font-medium">
+                    Buat RPP, LKPD, Asesmen, Media Belajar, dan Soal Ujian secara otomatis.
+                  </p>
+                  <div className="flex flex-wrap gap-2.5 pt-1 text-xs font-bold text-white/90 font-sans">
+                    <span>{activeKelas || "Kelas 4A"}</span>
+                    <span>•</span>
+                    <span>{subject || "IPAS"}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Inline Guided Tutorial for Magic Studio Screen */}
-            {showGuidedTutorial && (
+            {!isFocusView && showGuidedTutorial && (
               <div id="tutorial-card-studio" className="bg-[#EBF3FF] border border-blue-200 p-4.5 rounded-2xl flex gap-3.5 items-start text-xs text-indigo-950 font-sans shadow-3xs leading-relaxed animate-fade-in no-print">
                 <div className="bg-indigo-500 text-white rounded-xl p-2 shrink-0 select-none">
                   <HelpCircle className="w-5 h-5 animate-pulse" />
@@ -5417,35 +5239,37 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             )}
 
             {/* STEPPER UI */}
-            <div className="flex items-center justify-center gap-6 pb-2.5 mb-6 select-none border-b border-slate-100 no-print">
-              <div className="flex items-center gap-1 sm:gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole(null)}
-                  className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg transition cursor-pointer border-none focus:outline-none ${
-                    selectedRole ? "bg-emerald-55 text-emerald-700" : "bg-[#1E3A8A] text-white"
-                  }`}
-                >
-                  {selectedRole ? "✓ Peran" : "1. Identitas"}
-                </button>
-                <span className="text-slate-350 font-black">/</span>
-                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
-                  !selectedRole 
-                    ? "bg-slate-100 text-slate-400 animate-none" 
-                    : generating 
-                    ? "bg-orange-50 text-orange-755 animate-pulse border border-orange-100" 
-                    : "bg-[#1E3A8A] text-white"
-                }`}>
-                  2. Parameter
-                </span>
-                <span className="text-slate-350 font-black">/</span>
-                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
-                  currentResult.magic_studio_output ? "bg-emerald-55 text-emerald-700" : "bg-slate-100 text-slate-400"
-                }`}>
-                  3. Preview
-                </span>
+            {!isFocusView && (
+              <div className="flex items-center justify-center gap-6 pb-2.5 mb-6 select-none border-b border-slate-100 no-print">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRole(null)}
+                    className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg transition cursor-pointer border-none focus:outline-none ${
+                      selectedRole ? "bg-emerald-55 text-emerald-700" : "bg-[#1E3A8A] text-white"
+                    }`}
+                  >
+                    {selectedRole ? "✓ Peran" : "1. Identitas"}
+                  </button>
+                  <span className="text-slate-350 font-black">/</span>
+                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
+                    !selectedRole 
+                      ? "bg-slate-100 text-slate-400 animate-none" 
+                      : generating 
+                      ? "bg-orange-50 text-orange-755 animate-pulse border border-orange-100" 
+                      : "bg-[#1E3A8A] text-white"
+                  }`}>
+                    2. Parameter
+                  </span>
+                  <span className="text-slate-350 font-black">/</span>
+                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
+                    currentResult.magic_studio_output ? "bg-emerald-55 text-emerald-700" : "bg-slate-100 text-slate-400"
+                  }`}>
+                    3. Preview
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* TWO COLUMN WORKSPACE GRID OR ADAPTIVE INITIAL SCREEN */}
             {selectedRole === null ? (
@@ -5547,41 +5371,43 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             ) : (
               <div className="space-y-4">
                 {/* Mobile Pane Switcher (only visible on mobile/tablet) */}
-                <div className="lg:hidden flex p-1.5 bg-slate-100 rounded-2xl border border-slate-205 gap-1.5 select-none no-print">
-                  <button
-                    type="button"
-                    onClick={() => setMobilePane("input")}
-                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all text-center flex items-center justify-center gap-2 cursor-pointer ${
-                      mobilePane === "input"
-                        ? "bg-[#1E3A8A] text-white shadow-xs"
-                        : "text-slate-600 hover:bg-white/85 hover:text-slate-800"
-                    }`}
-                  >
-                    <ListCollapse className="w-4 h-4 shrink-0" />
-                    <span>✏️ Atur Parameter &amp; Materi</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMobilePane("result")}
-                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all text-center flex items-center justify-center gap-2 cursor-pointer ${
-                      mobilePane === "result"
-                        ? "bg-[#1E3A8A] text-white shadow-xs"
-                        : "text-slate-620 hover:bg-white/85 hover:text-slate-800"
-                    }`}
-                  >
-                    <Sparkles className="w-4 h-4 text-orange-400 shrink-0 select-none animate-pulse" />
-                    <span>✨ Lihat Perangkat Ajar</span>
-                  </button>
-                </div>
+                {!isFocusView && (
+                  <div className="lg:hidden flex p-1.5 bg-slate-100 rounded-2xl border border-slate-205 gap-1.5 select-none no-print">
+                    <button
+                      type="button"
+                      onClick={() => setMobilePane("input")}
+                      className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all text-center flex items-center justify-center gap-2 cursor-pointer ${
+                        mobilePane === "input"
+                          ? "bg-[#1E3A8A] text-white shadow-xs"
+                          : "text-slate-600 hover:bg-white/85 hover:text-slate-800"
+                      }`}
+                    >
+                      <ListCollapse className="w-4 h-4 shrink-0" />
+                      <span>✏️ Atur Parameter &amp; Materi</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMobilePane("result")}
+                      className={`flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all text-center flex items-center justify-center gap-2 cursor-pointer ${
+                        mobilePane === "result"
+                          ? "bg-[#1E3A8A] text-white shadow-xs"
+                          : "text-slate-620 hover:bg-white/85 hover:text-slate-800"
+                      }`}
+                    >
+                      <Sparkles className="w-4 h-4 text-orange-400 shrink-0 select-none animate-pulse" />
+                      <span>✨ Lihat Perangkat Ajar</span>
+                    </button>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   
                   {/* LEFT COLUMN: Input form parameter controller */}
-                  <div className={`${mobilePane === "input" ? "block" : "hidden"} lg:block lg:col-span-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-3xs space-y-5 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto pr-1`}>
+                  <div className={`${isFocusView ? "hidden" : mobilePane === "input" ? "block" : "hidden lg:block"} lg:col-span-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-3xs space-y-5`}>
                   
                   <div className="flex justify-between items-center border-b border-slate-100 pb-2 select-none">
                     <h4 className="text-xs font-black text-[#0D1D34] uppercase tracking-wider block font-sans">
-                      Skenario Parameter &amp; Media Input
+                      Parameter &amp; Media
                     </h4>
                   </div>
 
@@ -5707,9 +5533,24 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
                     {/* Material Input text box */}
                 <div className="space-y-1.5">
-                  <label className="text-[10.5px] font-black uppercase text-slate-500 block">
-                    Topik / Materi:
-                  </label>
+                  <div className="flex flex-wrap justify-between items-center pb-0.5 gap-2 select-none">
+                    <label className="text-[10.5px] font-black uppercase text-slate-500 block">
+                      Topik / Materi:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wide border transition-all duration-300 ${
+                        isAutoSaving 
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-250 animate-pulse" 
+                          : "bg-slate-100 text-slate-500 border-slate-200"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isAutoSaving ? "bg-emerald-500 animate-ping" : "bg-emerald-500"}`} />
+                        {isAutoSaving ? "Mengamankan draf..." : "Draf Auto-Save"}
+                      </span>
+                      <span className="text-[9.5px] text-slate-400 font-bold leading-none">
+                        Tersimpan pukul: <span className="font-mono text-slate-600 bg-slate-150/40 px-1.5 py-0.5 rounded border border-slate-200">{lastAutoSaved}</span>
+                      </span>
+                    </div>
+                  </div>
                   <textarea
                     value={materialText}
                     onChange={(e) => setMaterialText(e.target.value)}
@@ -5897,7 +5738,6 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                     </button>
                   )}
                 </div>
-
                 </div>
 
                 {/* MODUL 3: AI PROCESSOR & LANGKAH PENYUSUNAN */}
@@ -5978,7 +5818,19 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                               }`}
                             >
                               <div className="flex items-center gap-2 font-sans">
-                                <span className="text-xs">{item.icon}</span>
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                                  item.id === "modul_ajar" ? "bg-blue-100" :
+                                  item.id === "tp_atp" ? "bg-purple-100" :
+                                  item.id === "lkpd" ? "bg-emerald-100" :
+                                  item.id === "asesmen" ? "bg-orange-100" :
+                                  "bg-red-100"
+                                }`}>
+                                  {item.id === "modul_ajar" && <FileText className="w-4 h-4 text-blue-600" />}
+                                  {item.id === "tp_atp" && <GraduationCap className="w-4 h-4 text-purple-600" />}
+                                  {item.id === "lkpd" && <FlaskConical className="w-4 h-4 text-emerald-600" />}
+                                  {item.id === "asesmen" && <BarChart3 className="w-4 h-4 text-orange-600" />}
+                                  {item.id === "soal_ujian" && <BookMarked className="w-4 h-4 text-red-600" />}
+                                </div>
                                 <span className={`transition ${isSelected ? "text-[#1E3A8A] font-black" : "text-slate-700"}`}>{item.label}</span>
                               </div>
                               
@@ -6016,43 +5868,61 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
               </div>
 
               {/* RIGHT COLUMN: Output display work board tabs */}
-              <div className={`${mobilePane === "result" ? "flex" : "hidden"} lg:flex lg:col-span-8 flex-col gap-5`}>
+              <div className={`${mobilePane === "result" ? "flex" : "hidden"} lg:flex ${isFocusView ? "lg:col-span-12" : "lg:col-span-8"} flex-col gap-5`}>
                 <>
                     {/* Visual tabs selectors */}
-                    <div className="grid grid-cols-3 gap-2 select-none shrink-0 bg-white p-1 rounded-xl border border-slate-205 font-sans">
-                      <button
-                        onClick={() => setWorkspaceTab("rpp")}
-                        className={`py-2 px-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                          workspaceTab === "rpp"
-                            ? "bg-[#EBF3FF] text-[#1E3A8A]"
-                            : "text-slate-550 hover:text-slate-800 hover:bg-slate-55"
-                        }`}
-                      >
-                        📝 RPP
-                      </button>
+                    {!isFocusView && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 select-none shrink-0 bg-white p-1 rounded-xl border border-slate-205 font-sans">
+                        <button
+                          onClick={() => setWorkspaceTab("rpp")}
+                          className={`py-2 px-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            workspaceTab === "rpp"
+                              ? "bg-[#EBF3FF] text-[#1E3A8A]"
+                              : "text-slate-550 hover:text-slate-800 hover:bg-slate-55"
+                          }`}
+                        >
+                          📝 RPP
+                        </button>
 
-                      <button
-                        onClick={() => setWorkspaceTab("video")}
-                        className={`py-2 px-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                          workspaceTab === "video"
-                            ? "bg-[#EBF3FF] text-[#1E3A8A]"
-                            : "text-slate-550 hover:text-slate-800 hover:bg-slate-55"
-                        }`}
-                      >
-                        🎬 Media Belajar
-                      </button>
+                        <button
+                          onClick={() => setWorkspaceTab("video")}
+                          className={`py-2 px-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            workspaceTab === "video"
+                              ? "bg-[#EBF3FF] text-[#1E3A8A]"
+                              : "text-slate-550 hover:text-slate-800 hover:bg-slate-55"
+                          }`}
+                        >
+                          🎬 Media Belajar
+                        </button>
 
-                      <button
-                        onClick={() => setWorkspaceTab("guide")}
-                        className={`py-2 px-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                          workspaceTab === "guide"
-                            ? "bg-[#EBF3FF] text-[#1E3A8A]"
-                            : "text-slate-550 hover:text-slate-800 hover:bg-slate-55"
-                        }`}
-                      >
-                        📋 Panduan Admin
-                      </button>
-                    </div>
+                        <button
+                          onClick={() => setWorkspaceTab("history")}
+                          className={`py-2 px-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                            workspaceTab === "history"
+                              ? "bg-[#EBF3FF] text-[#1E3A8A]"
+                              : "text-slate-550 hover:text-slate-800 hover:bg-slate-55"
+                          }`}
+                        >
+                          ⏱️ Riwayat Versi
+                          {rppVersions.length > 0 && (
+                            <span className="bg-orange-550 text-white text-[9px] px-1.5 py-0.5 font-black rounded-full leading-none shrink-0 scale-[0.85]">
+                              {rppVersions.length}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => setWorkspaceTab("guide")}
+                          className={`py-2 px-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            workspaceTab === "guide"
+                              ? "bg-[#EBF3FF] text-[#1E3A8A]"
+                              : "text-slate-550 hover:text-slate-800 hover:bg-slate-55"
+                          }`}
+                        >
+                          📋 Panduan Admin
+                        </button>
+                      </div>
+                    )}
 
                     {/* Workspace rendering segments */}
                     <div className="flex-1 min-h-[400px]">
@@ -6080,6 +5950,8 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                           handleGenerateDokumen={handleGenerateDokumen}
                           selectedDokumen={selectedDokumen}
                           setSelectedDokumen={setSelectedDokumen}
+                          isFocusView={isFocusView}
+                          setIsFocusView={setIsFocusView}
                           onSaveToLibrary={(title, level, subject, text, result) => {
                             try {
                               const existingStr = localStorage.getItem("gurupintar_custom_templates") || "[]";
@@ -6140,6 +6012,175 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                           magicStudioOutput={currentResult.magic_studio_output}
                           showToast={showToast}
                         />
+                      )}
+
+                      {/* Riwayat Versi & Cadangan RPP (Version History) */}
+                      {workspaceTab === "history" && (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-3xs space-y-6 text-left font-sans">
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-100 gap-4">
+                            <div>
+                              <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                                <span>🕒 Riwayat Versi &amp; Cadangan RPP</span>
+                                <span className="bg-blue-50 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-extrabold border border-blue-150">
+                                  {rppVersions.length} Versi
+                                </span>
+                              </h3>
+                              <p className="text-[11px] text-slate-500 font-medium mt-1">
+                                Cadangan otomatis tersimpan setiap kali Anda menyusun materi baru atau menerapkan koreksi AI.
+                              </p>
+                            </div>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const d = new Date();
+                                  const timestampStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " WIB";
+                                  const finalSubject = (subject === "Input Mapel Manual (Ketik Sendiri)" || subject === "Semua Mata Pelajaran") ? (manualSubject || "Mata Pelajaran") : subject;
+                                  const snapVersion: RppVersion = {
+                                    id: `version-${Date.now()}`,
+                                    timestamp: `${d.toLocaleDateString("id-ID")} ${timestampStr}`,
+                                    result: JSON.parse(JSON.stringify(currentResult)),
+                                    label: `Snapshot Manual: ${finalSubject} (${classLevel})`,
+                                    materialText: materialText.trim(),
+                                    classLevel,
+                                    subject: finalSubject
+                                  };
+                                  setRppVersions(prev => [snapVersion, ...prev]);
+                                  playSfx("success");
+                                  showToast("💾 Berhasil menyimpan cadangan versi RPP saat ini!");
+                                }}
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-black text-[10.5px] py-1.5 px-3 rounded-xl border border-blue-200 transition shrink-0 cursor-pointer text-center w-full sm:w-auto"
+                              >
+                                ➕ Snapshot Manual
+                              </button>
+                              {rppVersions.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm("Apakah Anda yakin ingin menghapus seluruh riwayat versi untuk RPP ini?")) {
+                                      setRppVersions([]);
+                                      playSfx("click");
+                                      showToast("🧹 Seluruh riwayat versi berhasil dikosongkan.");
+                                    }
+                                  }}
+                                  className="bg-red-50 hover:bg-red-100 text-red-700 font-black text-[10.5px] py-1.5 px-3 rounded-xl border border-red-200 transition shrink-0 cursor-pointer text-center w-full sm:w-auto"
+                                >
+                                  🗑️ Kosongkan
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {rppVersions.length === 0 ? (
+                            <div className="py-12 text-center text-slate-400 space-y-3">
+                              <span className="text-4xl block">✨</span>
+                              <p className="text-xs font-semibold text-slate-500">Belum ada riwayat cadangan versi yang dicatat.</p>
+                              <p className="text-[10px] text-slate-450 max-w-md mx-auto">
+                                Setiap kali AI memformulasi materi baru atau menerapkan revisi instan, draf sebelumnya dicadangkan secara otomatis agar guru dapat memulihkan pekerjaannya dengan mudah.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                              {rppVersions.map((ver, idx) => {
+                                const isCurrentActive = JSON.stringify(ver.result) === JSON.stringify(currentResult);
+                                return (
+                                  <div 
+                                    key={ver.id} 
+                                    className={`p-4 border rounded-2xl transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
+                                      isCurrentActive 
+                                        ? "bg-blue-50/50 border-blue-250 shadow-3xs" 
+                                        : "bg-slate-50/50 border-slate-150 hover:bg-slate-50 hover:border-slate-350"
+                                    }`}
+                                  >
+                                    <div className="space-y-1.5 flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[10px] font-mono text-slate-500 bg-slate-200/60 border border-slate-250 px-1.5 py-0.5 rounded leading-none font-semibold">
+                                          {ver.timestamp}
+                                        </span>
+                                        {isCurrentActive && (
+                                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[8.5px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wide">
+                                            Aktif di Workspace
+                                          </span>
+                                        )}
+                                        {ver.label.includes("Revisi AI") ? (
+                                          <span className="bg-purple-100 text-purple-800 border border-purple-200 text-[8.5px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wide">
+                                            🤖 Revisi AI
+                                          </span>
+                                        ) : ver.label.includes("Snapshot") ? (
+                                          <span className="bg-yellow-100 text-yellow-850 border border-yellow-250 text-[8.5px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wide">
+                                            💾 Snapshot Manual
+                                          </span>
+                                        ) : (
+                                          <span className="bg-blue-100 text-blue-800 border border-blue-200 text-[8.5px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wide">
+                                            📋 Draf Utama
+                                          </span>
+                                        )}
+                                      </div>
+                                      <h4 className="text-xs font-black text-slate-800 leading-normal">
+                                        {ver.label}
+                                      </h4>
+                                      {ver.subject && (
+                                        <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+                                          Mata Pelajaran: <strong className="text-slate-700">{ver.subject}</strong> | Kelas: <strong className="text-slate-700">{ver.classLevel || "Umum"}</strong>
+                                        </p>
+                                      )}
+                                      {ver.result?.modul_ajar_rpp_merdeka?.komponen_inti?.tujuan_pembelajaran && (
+                                        <div className="text-[9.5px] text-slate-450 leading-relaxed font-semibold bg-white/75 p-2 rounded-lg border border-slate-100">
+                                          <span className="block font-black text-slate-600 text-[8px] uppercase tracking-wider mb-0.5">Tujuan Pembelajaran:</span>
+                                          <div className="truncate max-w-lg italic font-normal leading-relaxed text-slate-600 pl-1">
+                                            {ver.result.modul_ajar_rpp_merdeka.komponen_inti.tujuan_pembelajaran}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2 shrink-0 w-full md:w-auto justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCurrentResult(ver.result);
+                                          if (ver.materialText) setMaterialText(ver.materialText);
+                                          if (ver.classLevel) setClassLevel(ver.classLevel);
+                                          if (ver.subject) {
+                                            const isStandard = SUBJECTS.includes(ver.subject);
+                                            if (isStandard) {
+                                              setSubject(ver.subject);
+                                              setManualSubject("");
+                                            } else {
+                                              setSubject("Input Mapel Manual (Ketik Sendiri)");
+                                              setManualSubject(ver.subject);
+                                            }
+                                          }
+                                          playSfx("success");
+                                          showToast("🔄 Sukses memulihkan RPP Ke Versi Ini!");
+                                        }}
+                                        disabled={isCurrentActive}
+                                        className={`text-[11px] font-black py-2 px-3.5 rounded-xl shadow-3xs transition duration-150 flex items-center gap-1.5 cursor-pointer ${
+                                          isCurrentActive
+                                            ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                            : "bg-[#1E3A8A] hover:bg-blue-700 text-white cursor-pointer hover:scale-[1.01]"
+                                        }`}
+                                      >
+                                        <span>🔄 Pulihkan Versi Ini</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setRppVersions(prev => prev.filter(v => v.id !== ver.id));
+                                          playSfx("click");
+                                          showToast("🗑️ Cadangan versi berhasil dihapus.");
+                                        }}
+                                        className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-150 p-2.5 rounded-xl transition cursor-pointer flex items-center justify-center text-xs font-bold shrink-0"
+                                        title="Hapus versi ini"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       )}
 
                     </div>
@@ -6753,19 +6794,24 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                     </span>
                   </div>
 
-                  {/* Baris 3 Quotes */}
-                  <div className="pl-3 border-l-2 border-amber-400 bg-white/5 py-1.5 px-3.5 rounded-r-xl max-w-xl text-left backdrop-blur-xs shadow-3xs">
-                    <span className="text-amber-300 font-serif text-sm leading-none select-none font-extrabold inline-block mr-1">“</span>
-                    <span className="italic text-[11.5px] text-sky-100 font-medium font-sans">
-                      {profileQuote || "Belum ada quotes. Klik 'Edit Profil' di bawah untuk menambahkan kalimat motivasi!"}
-                    </span>
-                    <span className="text-amber-300 font-serif text-sm leading-none select-none font-extrabold inline-block ml-1">”</span>
-                  </div>
+                  {/* Quotes/Motivasi Guru */}
+                  <p className="text-amber-300 italic text-[11.5px] leading-relaxed max-w-xl font-sans text-left mt-1.5 font-medium select-text">
+                    “ {profileQuote || "Bertumbuh 1% Setiap Hari"} ”
+                  </p>
+
+
                 </div>
               </div>
 
               {/* SISI KANAN (Action Buttons) */}
               <div className="flex items-center gap-3 shrink-0 relative z-10 w-full md:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setActiveOverlay("profile"); playSfx("click"); }}
+                  className="bg-white/10 hover:bg-white/25 border border-white/20 text-white font-sans font-bold text-xs px-4.5 py-3 rounded-2xl transition inline-flex items-center gap-2 cursor-pointer shadow-3xs hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <span>✏️ Ubah Profil &amp; Motivasi</span>
+                </button>
               </div>
 
             </div>
@@ -6855,11 +6901,11 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                 >
                   <div className="flex items-center gap-3.5">
                     <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center border border-blue-200 shrink-0">
-                      ☁️
+                      <Cloud className="w-4 h-4 text-blue-700 shrink-0" />
                     </div>
                     <div>
                       <strong className="text-xs sm:text-sm font-black text-blue-950 block leading-tight flex items-center gap-2">
-                        <span>☁️ Sinkronisasi Cloud</span>
+                        <span>Sinkronisasi Cloud</span>
                         <span className="text-[7.5px] bg-blue-650 text-white font-extrabold px-1.5 py-0.2 rounded-full uppercase tracking-wider">
                           Google Drive
                         </span>
@@ -7241,7 +7287,12 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                             <button
                               type="button"
                               onClick={() => {
-                                if (!confirm(`Hapus kelas "${activeKelas}"? Semua data absensi dan nilai kelas ini akan terhapus.`)) return;
+                                if (activeKelas.toLowerCase() === "kelas 4a" || activeKelas.trim() === "Kelas 4A") {
+                                   showToast("⚠️ Kelas dummy 'Kelas 4A' tidak bisa dihapus agar simulasi selalu tersedia.");
+                                   playSfx("notify");
+                                   return;
+                                 }
+                                 if (!confirm(`Hapus kelas "${activeKelas}"? Semua data absensi dan nilai kelas ini akan terhapus.`)) return;
                                 const newList = kelasList.filter(k => k !== activeKelas);
                                 setKelasList(newList);
                                 setActiveKelas(newList[0]);
@@ -7703,7 +7754,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                 >
                   <div className="flex items-center gap-3.5">
                     <div className="w-9 h-9 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center border border-slate-200 shrink-0">
-                      ⚙️
+                      <Settings className="w-4 h-4 text-slate-600 shrink-0" />
                     </div>
                     <div>
                       <strong className="text-xs sm:text-sm font-black text-slate-800 block leading-tight">
@@ -7766,7 +7817,7 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                     </div>
 
                     {/* Tutorial Reset Toggle */}
-                    <div className="flex justify-between items-center py-2 select-none">
+                    <div className="flex justify-between items-center py-2 border-b border-slate-150/60 select-none">
                       <div className="space-y-0.5 text-left">
                         <strong className="text-xs font-black text-slate-800 block">Panduan Guru Interaktif</strong>
                         <span className="text-[10px] text-slate-400 block font-medium font-sans">Atur apakah balon tutorial instan di halaman-halaman muncul kembali.</span>
@@ -7790,6 +7841,39 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                       </button>
                     </div>
 
+                    {/* Reset Application Data Option */}
+                    <div className="flex justify-between items-center py-2 select-none">
+                      <div className="space-y-0.5 text-left">
+                        <strong className="text-xs font-black text-red-650 block">Kosongkan Riwayat &amp; Mulai Bersih</strong>
+                        <span className="text-[10px] text-slate-400 block font-medium font-sans">Hapus semua data simulasi, log penilaian, serta riwayat kehadiran dari memori lokal browser.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm("Apakah Anda yakin ingin mengosongkan semua data simulasi untuk memulai bersih? Tindakan ini akan menghapus riwayat kehadiran dan penilaian manual yang tersimpan di perangkat ini (Kunci API Anda akan tetap dipertahankan).")) {
+                            // Keep Gemini API key and sound settings
+                            const geminiKey = localStorage.getItem("grup_teacher_api_key");
+                            const sfxKey = localStorage.getItem("GP_SFX_ENABLED");
+                            
+                            // Clear all local storage
+                            localStorage.clear();
+                            
+                            // Restore back critical credentials
+                            if (geminiKey) localStorage.setItem("grup_teacher_api_key", geminiKey);
+                            if (sfxKey) localStorage.setItem("GP_SFX_ENABLED", sfxKey);
+                            
+                            playSfx("success");
+                            showToast("🧹 Berhasil dibersihkan! Aplikasi dimulai ulang...");
+                            setTimeout(() => {
+                              window.location.reload();
+                            }, 1200);
+                          }
+                        }}
+                        className="bg-red-50 hover:bg-red-100 text-red-700 font-extrabold text-[10.5px] py-1.5 px-4 rounded-xl border border-red-200 transition shrink-0 cursor-pointer font-sans"
+                      >
+                        Hapus Semua Data Contoh
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -7950,6 +8034,23 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             </div>
 
           </motion.div>
+        )}
+
+        {/* VIEW 7: PANDUAN BETA TESTER */}
+        {currentScreen === "beta_guide" && (
+          <BetaGuideView
+            profileName={profileName}
+            profileSchool={profileSchool}
+            profileNip={profileNip}
+            loginEmail={loginEmail}
+            storedFeedbacks={storedFeedbacks}
+            setStoredFeedbacks={setStoredFeedbacks}
+            showToast={showToast}
+            setCurrentScreen={setCurrentScreen}
+            playSfx={playSfx}
+            teacherApiKey={teacherApiKey}
+            setTeacherApiKey={setTeacherApiKey}
+          />
         )}
 
         </AnimatePresence>
@@ -8117,8 +8218,8 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-150 rounded-2xl p-4.5 mb-4 space-y-3 select-none relative overflow-hidden text-slate-800 shrink-0">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-lg select-none shrink-0 font-bold bg-white text-blue-700 shadow-3xs">
-                    📅
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center select-none shrink-0 font-bold bg-white text-blue-700 shadow-3xs">
+                    <Calendar className="w-4 h-4 text-blue-700 shrink-0" />
                   </div>
                   <div>
                     <h5 className="text-[11.5px] font-black uppercase text-[#1E3A8A] tracking-wider leading-none font-sans">
@@ -8579,17 +8680,19 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
       )}
 
       {/* 🚀 FIXED BOTTOM NAVBAR FOR MOBILE/TABLET (Sesuai Mockup) */}
-      <div className="fixed bottom-0 left-0 right-0 z-[190] bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:hidden flex justify-around py-2 px-2 select-none no-print">
+      <div className="fixed bottom-0 left-0 right-0 z-[190] bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.04)] lg:hidden flex justify-around py-3 pb-5 px-3 select-none no-print">
         <button
           onClick={() => {
             setCurrentScreen("home");
             playSfx("click");
           }}
-          className={`flex-1 py-1.5 flex flex-col items-center gap-1 font-sans font-bold text-[10px] transition-all cursor-pointer border-0 bg-transparent ${
-            currentScreen === "home" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center gap-1 font-sans font-black text-[9px] tracking-wide uppercase transition-all duration-250 cursor-pointer border-0 bg-transparent ${
+            currentScreen === "home" ? "text-indigo-600 scale-105" : "text-slate-400 hover:text-slate-600"
           }`}
         >
-          <span className="text-[17px]">🏠</span>
+          <div className={`p-1 px-3 rounded-full transition-all ${currentScreen === "home" ? "bg-indigo-50/80" : ""}`}>
+            <Home className={`w-5 h-5 shrink-0 transition-transform duration-250 ${currentScreen === "home" ? "stroke-[2.5]" : "stroke-[2]"}`} />
+          </div>
           <span>Beranda</span>
         </button>
 
@@ -8599,11 +8702,13 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             setMobilePane("input");
             playSfx("click");
           }}
-          className={`flex-1 py-1.5 flex flex-col items-center gap-1 font-sans font-bold text-[10px] transition-all cursor-pointer border-0 bg-transparent ${
-            currentScreen === "studio" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center gap-1 font-sans font-black text-[9px] tracking-wide uppercase transition-all duration-250 cursor-pointer border-0 bg-transparent ${
+            currentScreen === "studio" ? "text-indigo-600 scale-105" : "text-slate-400 hover:text-slate-600"
           }`}
         >
-          <span className="text-[17px]">✏️</span>
+          <div className={`p-1 px-3 rounded-full transition-all ${currentScreen === "studio" ? "bg-indigo-50/80" : ""}`}>
+            <FileEdit className={`w-5 h-5 shrink-0 transition-transform duration-250 ${currentScreen === "studio" ? "stroke-[2.5]" : "stroke-[2]"}`} />
+          </div>
           <span>Buat Ajar</span>
         </button>
         
@@ -8612,11 +8717,13 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             setCurrentScreen("absensi");
             playSfx("click");
           }}
-          className={`flex-1 py-1.5 flex flex-col items-center gap-1 font-sans font-bold text-[10px] transition-all cursor-pointer border-0 bg-transparent ${
-            currentScreen === "absensi" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center gap-1 font-sans font-black text-[9px] tracking-wide uppercase transition-all duration-250 cursor-pointer border-0 bg-transparent ${
+            currentScreen === "absensi" ? "text-indigo-600 scale-105" : "text-slate-400 hover:text-slate-600"
           }`}
         >
-          <span className="text-[17px]">✅</span>
+          <div className={`p-1 px-3 rounded-full transition-all ${currentScreen === "absensi" ? "bg-indigo-50/80" : ""}`}>
+            <CalendarCheck className={`w-5 h-5 shrink-0 transition-transform duration-250 ${currentScreen === "absensi" ? "stroke-[2.5]" : "stroke-[2]"}`} />
+          </div>
           <span>Kehadiran</span>
         </button>
 
@@ -8625,12 +8732,14 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             setCurrentScreen("loker");
             playSfx("click");
           }}
-          className={`flex-1 py-1.5 flex flex-col items-center gap-1 font-sans font-bold text-[10px] transition-all cursor-pointer border-0 bg-transparent ${
-            currentScreen === "loker" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center gap-1 font-sans font-black text-[9px] tracking-wide uppercase transition-all duration-250 cursor-pointer border-0 bg-transparent ${
+            currentScreen === "loker" ? "text-indigo-600 scale-105" : "text-slate-400 hover:text-slate-600"
           }`}
         >
-          <span className="text-[17px]">📓</span>
-          <span>Catatan Nilai</span>
+          <div className={`p-1 px-3 rounded-full transition-all ${currentScreen === "loker" ? "bg-indigo-50/80" : ""}`}>
+            <BookOpenCheck className={`w-5 h-5 shrink-0 transition-transform duration-250 ${currentScreen === "loker" ? "stroke-[2.5]" : "stroke-[2]"}`} />
+          </div>
+          <span>Catatan</span>
         </button>
 
         <button
@@ -8638,12 +8747,14 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             setCurrentScreen("account");
             playSfx("click");
           }}
-          className={`flex-1 py-1.5 flex flex-col items-center gap-1 font-sans font-bold text-[10px] transition-all cursor-pointer border-0 bg-transparent ${
-            currentScreen === "account" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center gap-1 font-sans font-black text-[9px] tracking-wide uppercase transition-all duration-250 cursor-pointer border-0 bg-transparent ${
+            currentScreen === "account" ? "text-indigo-600 scale-105" : "text-slate-400 hover:text-slate-600"
           }`}
         >
-          <span className="text-[17px]">👤</span>
-          <span>Profil Saya</span>
+          <div className={`p-1 px-3 rounded-full transition-all ${currentScreen === "account" ? "bg-indigo-50/80" : ""}`}>
+            <User className={`w-5 h-5 shrink-0 transition-transform duration-250 ${currentScreen === "account" ? "stroke-[2.5]" : "stroke-[2]"}`} />
+          </div>
+          <span>Profil</span>
         </button>
       </div>
 
@@ -8909,7 +9020,12 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-purple-700 to-indigo-600 text-white p-5 rounded-t-3xl flex justify-between items-center">
               <div>
-                <h2 className="text-base font-black">📝 Narasi Rapor Otomatis</h2>
+                <h2 className="text-base font-black flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                    <FilePlus2 className="w-4 h-4 text-white" />
+                  </div>
+                  Narasi Rapor Otomatis
+                </h2>
                 <p className="text-purple-200 text-[11px] mt-0.5">AI menulis narasi rapor semua siswa dari data nilai.</p>
               </div>
               <button type="button" onClick={() => setShowRaporModal(false)}
@@ -9028,7 +9144,12 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto animate-fade-in">
               <div className="bg-gradient-to-r from-violet-700 to-indigo-600 text-white p-5 rounded-t-3xl flex justify-between items-center sticky top-0 z-10">
                 <div>
-                  <h2 className="text-base font-black">⚡ Kuis Dadakan AI</h2>
+                  <h2 className="text-base font-black flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                      <Zap className="w-4 h-4 text-white" />
+                    </div>
+                    Kuis Dadakan AI
+                  </h2>
                   <p className="text-violet-200 text-[11px] mt-0.5 font-medium">Generate kuis instan interaktif netral & sesuai kurikulum.</p>
                 </div>
                 <button type="button" onClick={() => { setShowKuisModal(false); setKuisResult(""); }}
@@ -9149,7 +9270,12 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto animate-fade-in flex flex-col">
             <div className="bg-gradient-to-r from-amber-600 to-orange-500 text-white p-5 rounded-t-3xl flex justify-between items-center shrink-0">
               <div>
-                <h2 className="text-base font-black">📔 Jurnal Mengajar Harian</h2>
+                <h2 className="text-base font-black flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                    <PenLine className="w-4 h-4 text-white" />
+                  </div>
+                  Jurnal Mengajar Harian
+                </h2>
                 <p className="text-amber-100 text-[11px] mt-0.5">
                   {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                 </p>
@@ -9890,8 +10016,8 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                     {/* SEGMENT 1: STUDENTS */}
                     {(searchFilterCategory === "semua" || searchFilterCategory === "siswa") && (
                       <div className="space-y-2.5">
-                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b border-slate-100 pb-1">
-                          <span>👤</span> Hasil Pencarian Murid ({matchedStudentsList.length})
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b border-slate-100 pb-1">
+                          <User className="w-3.5 h-3.5 text-slate-450 shrink-0" /> Hasil Pencarian Murid ({matchedStudentsList.length})
                         </h4>
                         
                         {matchedStudentsList.length === 0 ? (
@@ -9994,8 +10120,8 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
                     {/* SEGMENT 2: PERANGKAT AJAR */}
                     {(searchFilterCategory === "semua" || searchFilterCategory === "rpp") && (
                       <div className="space-y-2.5">
-                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b border-slate-100 pb-1">
-                          <span>📋</span> Hasil Perangkat Ajar &amp; RPP ({matchedRppsList.length})
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b border-slate-100 pb-1">
+                          <FileText className="w-3.5 h-3.5 text-slate-450 shrink-0" /> Hasil Perangkat Ajar &amp; RPP ({matchedRppsList.length})
                         </h4>
 
                         {matchedRppsList.length === 0 ? (
@@ -10194,8 +10320,8 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
 
                     {/* EDIT EVALUASI KOGNITIF & CATATAN SIKAP INTERACTIVE */}
                     <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-3 shadow-3xs">
-                      <h5 className="text-[10.5px] font-black text-indigo-950 uppercase tracking-wide flex items-center gap-1">
-                        <span>📝</span> Koreksi Nilai &amp; Sikap Cepat
+                      <h5 className="text-[10.5px] font-black text-indigo-950 uppercase tracking-wide flex items-center gap-2">
+                        <FileEdit className="w-3.5 h-3.5 text-indigo-650 shrink-0" /> Koreksi Nilai &amp; Sikap Cepat
                       </h5>
                       
                       {/* SCORE INPUT */}
@@ -10315,6 +10441,295 @@ ${gradeEntries.map(([name, g]) => `- ${name}: Nilai ${g.score} | Catatan: ${g.fe
           </div>
         </div>
       )}
+
+      {/* FLOATING CHATBOT WIDGET GURU.AI */}
+      <div className="fixed bottom-6 right-6 z-[160] no-print select-none">
+        {/* Toggle Button */}
+        {!isChatOpen ? (
+          <button
+            type="button"
+            onClick={() => { setIsChatOpen(true); playSfx("success"); }}
+            className="w-14 h-14 bg-gradient-to-tr from-[#1E3A8A] via-blue-600 to-indigo-700 hover:scale-105 hover:rotate-2 active:scale-95 text-white rounded-full shadow-[0_12px_40px_rgba(30,58,138,0.35)] flex items-center justify-center transition-all duration-300 relative border border-white/10 group cursor-pointer"
+            title="Tanya GURU.AI"
+            id="btn-open-guru-ai-chat"
+          >
+            <div className="absolute -inset-1.5 bg-gradient-to-tr from-[#1E3A8A] to-indigo-700 rounded-full blur-[6px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
+            <MessageSquare className="w-6 h-6 text-white relative z-10" />
+            <span className="absolute -top-1 -right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center animate-pulse">
+              <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+            </span>
+          </button>
+        ) : (
+          <div 
+            className="bg-white rounded-3xl w-[92vw] sm:w-[420px] h-[550px] max-h-[85vh] border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden animate-slide-in-right transform origin-bottom-right"
+            style={{ pointerEvents: "auto" }}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#1E3A8A] via-[#1D4ED8] to-indigo-800 p-4 text-white relative shrink-0">
+              <div className="absolute -top-8 -left-8 w-24 h-24 bg-sky-500 rounded-full blur-[40px] opacity-20 pointer-events-none"></div>
+              <div className="flex justify-between items-center relative z-10 w-full">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center border border-white/10 relative shadow-inner">
+                    <Bot className="w-5 h-5 text-sky-300" />
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-[#1E3A8A]"></span>
+                  </div>
+                  <div className="text-left">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-sm font-black font-display tracking-tight uppercase leading-none">GURU.AI Chatbot</h4>
+                      <span className="text-[7px] bg-sky-400/20 text-sky-200 border border-sky-400/35 font-extrabold px-1.5 py-0.5 rounded-full font-mono uppercase tracking-wider scale-90">BETA</span>
+                    </div>
+                    <p className="text-[10px] text-sky-200 font-medium font-sans mt-0.5">Asisten Digital Bapak/Ibu Guru</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setIsChatOpen(false); playSfx("click"); }}
+                  className="bg-white/10 hover:bg-white/20 text-white/80 hover:text-white p-1.5 rounded-xl transition cursor-pointer border border-white/5"
+                  title="Tutup Chat"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-1 bg-black/15 p-1 rounded-xl mt-3.5 border border-white/5 text-[10.5px]">
+                <button
+                  type="button"
+                  onClick={() => { setChatTab("tanya"); playSfx("click"); }}
+                  className={`flex-1 py-1.5 rounded-lg font-black transition-all ${
+                    chatTab === "tanya" ? "bg-white text-slate-900 shadow-sm" : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  💬 TANYA GURU.AI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setChatTab("koreksi"); playSfx("click"); }}
+                  className={`flex-1 py-1.5 rounded-lg font-black transition-all flex items-center justify-center gap-1.5 ${
+                    chatTab === "koreksi" ? "bg-white text-slate-900 shadow-sm" : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" /> KOREKSI EDITOR RPP
+                </button>
+              </div>
+            </div>
+
+            {/* Content Container based on Active Tab */}
+            {chatTab === "tanya" ? (
+              <React.Fragment>
+                {/* Selectors Bar */}
+                <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 flex gap-2 shrink-0">
+                  {/* Select Role */}
+                  <div className="flex-1 min-w-0">
+                    <label className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 text-left">Fokus Peran:</label>
+                    <select
+                      value={chatRole}
+                      onChange={(e) => { setChatRole(e.target.value as any); playSfx("click"); }}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[9.5px] font-black focus:outline-none cursor-pointer text-slate-700"
+                    >
+                      <option value="rpp">📝 Administrasi RPP</option>
+                      <option value="management">🏫 Manajemen Kelas</option>
+                      <option value="icebreaking">🎉 Ice Breaking / Game</option>
+                      <option value="merdeka">🇮🇩 Kurikulum Merdeka</option>
+                    </select>
+                  </div>
+                  {/* Select Model */}
+                  <div className="flex-1 min-w-0">
+                    <label className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 text-left">Kecerdasan:</label>
+                    <select
+                      value={chatModel}
+                      onChange={(e) => { setChatModel(e.target.value as any); playSfx("click"); }}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[9.5px] font-black focus:outline-none cursor-pointer text-slate-700"
+                    >
+                      <option value="gemini-3.1-flash-lite">⚡ Kilat (Flash-Lite)</option>
+                      <option value="gemini-3.5-flash">🛡️ Standar (Flash)</option>
+                      <option value="gemini-3.1-pro-preview">🧠 Pintar (Pro)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Message list (scrollable thread) */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-slate-50/50">
+                  {chatHistory.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex gap-2.5 max-w-[85%] ${msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"}`}
+                    >
+                      {/* Avatar */}
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border text-[10px] ${
+                        msg.role === "user"
+                          ? "bg-indigo-50 border-indigo-150 text-[#1E3A8A]"
+                          : "bg-gradient-to-tr from-[#1E3A8A] to-indigo-800 border-white/5 text-white"
+                      }`}>
+                        {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                      </div>
+
+                      {/* Bubble content */}
+                      <div className="space-y-1">
+                        <div className={`rounded-2xl px-3.5 py-2.5 text-[11.5px] leading-relaxed shadow-3xs text-left ${
+                          msg.role === "user"
+                            ? "bg-gradient-to-tr from-[#1E3A8A] to-blue-700 text-white rounded-tr-none"
+                            : "bg-white border border-slate-200 text-slate-800 rounded-tl-none font-sans"
+                        }`}>
+                          {/* Rich inline formatting renderer for Bold markdown stars */}
+                          {msg.text.split("\n").map((line, lineIdx) => (
+                            <p key={lineIdx} className={lineIdx > 0 ? "mt-1" : ""}>
+                              {line.split(/\*\*|__/).map((part, partIdx) => {
+                                if (partIdx % 2 === 1) {
+                                  return <strong key={partIdx} className="font-extrabold text-slate-900 border-b border-amber-300/40 bg-amber-50/50 px-0.5 rounded">{part}</strong>;
+                                }
+                                return part;
+                              })}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {isChatSending && (
+                    <div className="flex gap-2.5 max-w-[85%] mr-auto items-center">
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#1E3A8A] to-indigo-800 flex items-center justify-center shrink-0 text-white animate-pulse">
+                        <Bot className="w-4 h-4" />
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-3xs flex items-center gap-2">
+                        <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                        <span className="text-[10.5px] font-black text-slate-500 font-mono animate-pulse uppercase tracking-wider">Mengetik balasan...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ref point for auto-scroll */}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Suggested Chips (Auto-sends onClick) */}
+                <div className="px-3.5 py-2 bg-slate-50 border-t border-slate-100 flex gap-1.5 overflow-x-auto scrollbar-none shrink-0 text-left">
+                  {(() => {
+                    const getRoleSuggestions = () => {
+                      if (chatRole === "rpp") {
+                        return [
+                          "Beri saya draf RPP IPAS kelas 4 topik Fotosintesis",
+                          "Buatkan Alur Tujuan Pembelajaran (ATP) Matematika Fase B",
+                          "Draf instrumen asesmen formatif materi Tata Surya"
+                        ];
+                      } else if (chatRole === "management") {
+                        return [
+                          "Bagaimana mengatasi siswa kelas 4 yang pasif & pendiam?",
+                          "Solusi menghadapi anak yang hiperaktif saat kerja kelompok",
+                          "Cara membangun kesepakatan kelas yang dipatuhi bersama"
+                        ];
+                      } else if (chatRole === "icebreaking") {
+                        return [
+                          "Ide ice breaking 5 menit yang tidak butuh alat bantu",
+                          "Game matematika singkat untuk membakar semangat pagi",
+                          "Yel-yel motivasi seru untuk memulai pelajaran baru"
+                        ];
+                      } else {
+                        return [
+                          "Apa saja komponen utama KKTP Kurikulum Merdeka?",
+                          "Bagaimana mengintegrasikan Profil Pelajar Pancasila?",
+                          "Penjelasan teknis asesmen sumatif Kurikulum Merdeka"
+                        ];
+                      }
+                    };
+                    return getRoleSuggestions().map((sug, sIdx) => (
+                      <button
+                        key={sIdx}
+                        type="button"
+                        onClick={() => handleSendChatMessage(sug)}
+                        className="bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-600 hover:text-[#1E3A8A] text-[9.5px] font-bold px-3 py-1.5 rounded-full transition whitespace-nowrap cursor-pointer shrink-0 shadow-3xs flex items-center gap-1"
+                      >
+                        <span>💡</span>
+                        <span>{sug.length > 28 ? sug.substring(0, 26) + "..." : sug}</span>
+                      </button>
+                    ));
+                  })()}
+                </div>
+
+                {/* Footer Input Bar */}
+                <div className="p-3 border-t border-slate-150 bg-white flex gap-2 items-center shrink-0">
+                  <input
+                    type="text"
+                    value={revisionPrompt}
+                    onChange={(e) => setRevisionPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isChatSending) {
+                        e.preventDefault();
+                        handleSendChatMessage();
+                      }
+                    }}
+                    placeholder="Ketik pertanyaan untuk GURU.AI..."
+                    className="flex-1 bg-slate-55 border border-slate-250 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#1E3A8A] focus:bg-white transition text-slate-800"
+                    disabled={isChatSending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSendChatMessage()}
+                    disabled={isChatSending || !revisionPrompt.trim()}
+                    className="w-10 h-10 bg-[#1E3A8A] hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition cursor-pointer shrink-0 shadow-sm"
+                  >
+                    <Send className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              </React.Fragment>
+            ) : (
+              /* TAB 2: KOREKSI EDITOR RPP */
+              <div className="flex-1 p-4 flex flex-col justify-between bg-slate-50/50">
+                <div className="space-y-4">
+                  <div className="p-4 bg-amber-55 border border-amber-200 rounded-2xl text-left space-y-1.5">
+                    <strong className="text-amber-850 font-display text-xs flex items-center gap-1.5 font-black uppercase tracking-wider">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      Koreksi Draf RPP di Workspace
+                    </strong>
+                    <p className="text-[10.5px] leading-relaxed text-slate-650 font-semibold font-sans">
+                      Jelaskan instruksi perubahan atau materi tambahan yang ingin Anda sisipkan ke draf ajar aktif saat ini. GURU.AI akan memikirkan instruksi tersebut dan memodifikasi draf di editor secara menyeluruh.
+                    </p>
+                  </div>
+
+                  {/* Input Box */}
+                  <div className="space-y-2 text-left">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">INSTRUKSI KOREKSI ANDA:</label>
+                    <textarea
+                      value={revisionPrompt}
+                      onChange={(e) => setRevisionPrompt(e.target.value)}
+                      placeholder="Contoh: Ubah metode belajarnya menjadi Problem Based Learning, lalu tambahkan lampiran rubrik asesmen sumatif bergambar di bagian paling bawah draf."
+                      className="w-full h-32 bg-white border border-slate-250 rounded-2xl p-3.5 text-xs font-semibold focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-200 transition resize-none text-slate-800"
+                      disabled={revising}
+                    />
+                  </div>
+                </div>
+
+                {/* Action button */}
+                <div className="space-y-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleRefine}
+                    disabled={revising || !revisionPrompt.trim()}
+                    className="w-full bg-gradient-to-r from-amber-500 via-[#1E3A8A] to-indigo-800 hover:scale-[1.01] text-white font-extrabold text-xs py-3.5 rounded-2xl transition shadow-md select-none cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {revising ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Sedang menerapkan perbaikan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                        <span>TERAPKAN REVISI PADA EDITOR ⚡</span>
+                      </>
+                    )}
+                  </button>
+                  <p className="text-[9px] text-slate-450 text-center font-bold font-mono">
+                    ⚠️ Draf ajar aktif Anda akan disimpan sebagai versi baru dalam riwayat.
+                  </p>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+      </div>
 
     </div>
   );

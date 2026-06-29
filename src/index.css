@@ -175,3 +175,12 @@
     image-rendering: -webkit-optimize-contrast; /* Buat Safari/Chrome */
     image-rendering: crisp-edges;               /* Buat browser modern */
 }
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

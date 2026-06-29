@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Download, Plus, Save, Table, Trash2, UserPlus, Loader2 } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   ResponsiveContainer,
   LineChart,
@@ -369,75 +370,61 @@ export const LokerTugas: React.FC<LokerTugasProps> = ({
     });
   };
 
-  // Download XLS spreadsheet file format
+  // Download XLSX spreadsheet file format (SheetJS)
   const downloadLokerXlsx = () => {
-    let tableHtml = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="utf-8">
-        <style>
-          table { border-collapse: collapse; }
-          th { background-color: #1E3A8A; color: #FFFFFF; font-weight: bold; font-family: sans-serif; text-align: center; font-size: 11px; padding: 5px; }
-          td { font-family: sans-serif; text-align: center; font-size: 11px; padding: 5px; }
-          .text-left { text-align: left; }
-        </style>
-      </head>
-      <body>
-        <h2 style="font-family: sans-serif; color: #EA580C; margin-bottom: 2px;">REKAPITULASI CATATAN NILAI EVALUASI GURU</h2>
-        <p style="font-family: sans-serif; font-size: 12px; margin: 2px 0;">Sekolah: <strong>${profileSchool}</strong> | Kelas: <strong>${classKey}</strong> | Asesmen: <strong>${selectedAssignment}</strong></p>
-        <p style="font-family: sans-serif; font-size: 11px; margin: 2px 0; color: #555;">Guru Pengampu: <strong>${profileName}</strong> | NIP: <strong>${profileNip || "-"}</strong></p>
-        <table border="1">
-          <thead>
-            <tr>
-              <th style="background-color: #0F172A; color: #ffffff;">No</th>
-              <th style="background-color: #0F172A; color: #ffffff; text-align: left;">Nama Lengkap Murid</th>
-              <th style="background-color: #1E3A8A; color: #ffffff;">Mata Pelajaran</th>
-              <th style="background-color: #EA580C; color: #ffffff; width: 100px;">Skor Angka (0-100)</th>
-              <th style="background-color: #10B981; color: #ffffff; text-align: left;">Saran / Catatan Umpan Balik Guru</th>
-              <th style="background-color: #5B21B6; color: #ffffff;">Predikat Kognitif</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
+    const data: any[][] = [];
 
+    // Title & Info
+    data.push(["REKAPITULASI CATATAN NILAI EVALUASI GURU"]);
+    data.push([`Sekolah: ${profileSchool}`, `Kelas: ${classKey}`, `Asesmen: ${selectedAssignment}`]);
+    data.push([`Guru Pengampu: ${profileName}`, `NIP: ${profileNip || "-"}`]);
+    data.push([]); // Spacer row
+
+    // Header Row
+    data.push([
+      "No",
+      "Nama Lengkap Murid",
+      "Mata Pelajaran",
+      "Skor Angka (0-100)",
+      "Saran / Catatan Umpan Balik Guru",
+      "Predikat Kognitif"
+    ]);
+
+    // Student Rows
     Object.keys(attendance).forEach((name, idx) => {
       const rec = studentGrades[name] || { score: 80, feedback: "Ikut serta aktif" };
       let predikat = "Sangat Layak (A)";
-      let bg = "#DCFCE7";
       if (rec.score < 70) {
         predikat = "Perlu Bimbingan (C)";
-        bg = "#FEE2E2";
       } else if (rec.score < 90) {
         predikat = "Layak (B)";
-        bg = "#FEF3C7";
       }
 
-      tableHtml += `
-        <tr>
-          <td>${idx + 1}</td>
-          <td class="text-left" style="font-weight: bold; text-align: left;">${name}</td>
-          <td>${subject}</td>
-          <td style="font-weight: bold; background-color: ${bg};">${rec.score}</td>
-          <td class="text-left" style="text-align: left;">${rec.feedback}</td>
-          <td style="font-weight: bold;">${predikat}</td>
-        </tr>
-      `;
+      data.push([
+        idx + 1,
+        name,
+        subject,
+        rec.score,
+        rec.feedback,
+        predikat
+      ]);
     });
 
-    tableHtml += `
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Rekap Nilai ");
 
-    const blob = new Blob(["\ufeff" + tableHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    // Write XLSX
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const fileBlob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+    const url = URL.createObjectURL(fileBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Rekap_Nilai_Tugas_${selectedAssignment.replace(/\s+/g, "_")}.xls`;
+    link.download = `Rekap_Nilai_Tugas_${selectedAssignment.replace(/\s+/g, "_")}.xlsx`;
     link.click();
-    showToast("📥 Rekap Nilai Tugas (.XLSX) sukses diunduh!");
+
+    showToast("📥 Rekap Nilai Tugas (.XLSX) sukses diunduh — asli siap pakai!");
     if (onAddActivity) {
       onAddActivity(`Ekspor rekapan Catatan Nilai Asesmen "${selectedAssignment}" - Kelas ${classKey}`);
     }
